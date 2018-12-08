@@ -6,7 +6,7 @@ import logging
 import re
 import typing
 from typing import (
-    Callable, Dict, List, Optional, Sequence, Set, Tuple, Type, Union
+    Callable, Dict, List, Optional, Sequence, Set, Tuple, Type, Union, cast
 )
 
 import click
@@ -35,37 +35,6 @@ class ParameterCollisionError(Exception):
     pass
 
 
-class CompositeParameter:
-    """
-    Represents a complex type that requires values from multiple parameters. A
-    composite parameter is defined by annotating a class using the `composite`
-    decorator. The parameters of the class' construtor (exluding `self`) are
-    added to the CommandBuilder, prior to parsing, and then they are replaced by
-    an instance of the annotated class after parsing.
-
-    Note that composite parameters cannot be nested, i.e. a parameter cannot be a
-    list of composite types, and a composite type cannot itself have composite type
-    parameters - either of these will cause a `SignatureError` to be raised.
-
-    Args:
-        cls_or_fn: The class being decorated.
-        command_kwargs: Keyword arguments to CommandBuilder.
-    """
-    def __init__(self, cls_or_fn: Callable, command_kwargs: dict):
-        self._cls_or_fn = cls_or_fn
-        self._command_kwargs = command_kwargs
-
-    def __call__(
-        self, param_name: str, click_command: "AutoClickCommand",
-        exclude_short_names:  Set[str]
-    ):
-        kwargs = copy.copy(self._command_kwargs)
-        if "exclude_short_names" in kwargs:
-            exclude_short_names.update(kwargs["exclude_short_names"])
-        kwargs["exclude_short_names"] = exclude_short_names
-        return CompositeBuilder(self._cls_or_fn, param_name, click_command, **kwargs)
-
-
 class CommandMixin:
     def __init__(
         self,
@@ -81,7 +50,7 @@ class CommandMixin:
         self.composites = composites
 
     def parse_args(self, ctx, args):
-        args = super().parse_args(ctx, args)
+        args = cast(click.Command, super()).parse_args(ctx, args)
 
         def _apply(l, update=False):
             if l:
@@ -106,8 +75,89 @@ class CommandMixin:
         return args
 
 
+class CompositeParameter:
+    """
+    Represents a complex type that requires values from multiple parameters. A
+    composite parameter is defined by annotating a class using the `composite`
+    decorator. The parameters of the class' construtor (exluding `self`) are
+    added to the CommandBuilder, prior to parsing, and then they are replaced by
+    an instance of the annotated class after parsing.
+
+    Note that composite parameters cannot be nested, i.e. a parameter cannot be a
+    list of composite types, and a composite type cannot itself have composite type
+    parameters - either of these will cause a `SignatureError` to be raised.
+
+    Args:
+        cls_or_fn: The class being decorated.
+        command_kwargs: Keyword arguments to CommandBuilder.
+    """
+    def __init__(self, cls_or_fn: Callable, command_kwargs: dict):
+        self._cls_or_fn = cls_or_fn
+        self._command_kwargs = command_kwargs
+
+    def __call__(
+        self, param_name: str, click_command: CommandMixin,
+        exclude_short_names:  Set[str]
+    ):
+        kwargs = copy.copy(self._command_kwargs)
+        if "exclude_short_names" in kwargs:
+            exclude_short_names.update(kwargs["exclude_short_names"])
+        kwargs["exclude_short_names"] = exclude_short_names
+        return CompositeBuilder(self._cls_or_fn, param_name, click_command, **kwargs)
+
+
 class AutoClickCommand(CommandMixin, click.Command):
     pass
+
+
+class AutoClickGroup(CommandMixin, click.Group):
+    def command(self, arg, **kwargs):
+        """A shortcut decorator for declaring and attaching a command to
+        the group.  This takes the same arguments as :func:`command` but
+        immediately registers the created command with this instance by
+        calling into :meth:`add_command`.
+        """
+        if callable(arg):
+            cmd = CommandBuilder(arg, **kwargs).command
+            self.add_command(cmd)
+            return cmd
+        else:
+            def decorator(f):
+                _cmd = CommandBuilder(f, arg, **kwargs).command
+                self.add_command(_cmd)
+                return _cmd
+            return decorator
+
+    def group(self, arg, **kwargs):
+        """A shortcut decorator for declaring and attaching a group to
+        the group.  This takes the same arguments as :func:`group` but
+        immediately registers the created command with this instance by
+        calling into :meth:`add_command`.
+        """
+        if callable(arg):
+            cmd = GroupBuilder(arg, **kwargs).command
+            self.add_command(cmd)
+            return cmd
+        else:
+            def decorator(f):
+                _cmd = GroupBuilder(f, arg, **kwargs).command
+                self.add_command(_cmd)
+                return _cmd
+            return decorator
+
+    def parse_args(self, ctx, args):
+        if not args and self.no_args_is_help and not ctx.resilient_parsing:
+            click.echo(ctx.get_help(), color=ctx.color)
+            ctx.exit()
+
+        rest = CommandMixin.parse_args(self, ctx, args)
+        if self.chain:
+            ctx.protected_args = rest
+            ctx.args = []
+        elif rest:
+            ctx.protected_args, ctx.args = rest[:1], rest[1:]
+
+        return ctx.args
 
 
 class WrapperType(click.ParamType):
@@ -246,6 +296,26 @@ def command(
         return lambda f: CommandBuilder(f, arg, **kwargs).command
 
 
+def group(
+    arg: Optional[Union[Callable, str]] = None,
+    **kwargs
+):
+    """Creates a new :class:`Group` and uses the decorated function as
+    callback. Uses type arguments of decorated function to automatically
+    create:func:`option`s and :func:`argument`s. The name of the group
+    defaults to the name of the function.
+
+    Args:
+        arg: Either the function being annotated or an optional name. If name is
+            not specified, it is taken from the function name.
+        kwargs: Additional keyword args to pass to GroupBuilder.
+    """
+    if callable(arg):
+        return GroupBuilder(arg, **kwargs).command
+    else:
+        return lambda f: GroupBuilder(f, arg, **kwargs).command
+
+
 class ParamBuilder(metaclass=ABCMeta):
     def __init__(
         self,
@@ -303,7 +373,7 @@ class ParamBuilder(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def command(self) -> AutoClickCommand:
+    def command(self) -> CommandMixin:
         pass
 
     def handle_composite(self, param_name, param_type) -> bool:
@@ -378,7 +448,7 @@ class ParamBuilder(metaclass=ABCMeta):
                     isinstance(click_type, click.types.BoolParamType)
                 )
                 if isinstance(click_type, click.Tuple):
-                    param_nargs = len(click_type.types)
+                    param_nargs = len(cast(click.Tuple, click_type).types)
 
             else:
                 click_type = None
@@ -545,19 +615,21 @@ class CompositeBuilder(ParamBuilder):
         self,
         to_wrap: Callable,
         param_name: str,
-        click_command: AutoClickCommand,
+        click_command: CommandMixin,
         **kwargs
     ):
         self.param_name = param_name
         self._click_command = click_command
         func_params = None
         if inspect.isclass(to_wrap):
-            func_params = dict(inspect.signature(to_wrap.__init__).parameters)
+            func_params = dict(
+                inspect.signature(cast(type, to_wrap).__init__).parameters
+            )
             func_params.pop("self")
         super().__init__(to_wrap, func_params, **kwargs)
 
     @property
-    def command(self) -> AutoClickCommand:
+    def command(self) -> CommandMixin:
         return self._click_command
 
     def _get_long_name(self, param_name: str, keep_underscores: bool) -> str:
@@ -580,12 +652,12 @@ class CompositeBuilder(ParamBuilder):
         ctx.params[self.param_name] = self._wrapped(**kwargs)
 
 
-class CommandBuilder(ParamBuilder):
+class BaseCommandBuilder(ParamBuilder):
     def __init__(
         self,
         to_wrap: Callable,
+        command_class: Type[CommandMixin],
         name: Optional[str] = None,
-        command_class: Type[AutoClickCommand] = AutoClickCommand,
         composite_types: Optional[Dict[str, CompositeParameter]] = None,
         extra_click_kwargs: Optional[dict] = None,
         **kwargs
@@ -603,7 +675,7 @@ class CommandBuilder(ParamBuilder):
         return self._name or self._wrapped_name.lower().replace('_', '-')
 
     @property
-    def command(self) -> AutoClickCommand:
+    def command(self) -> CommandMixin:
         return self._click_command
 
     def handle_composite(self, param_name, param_type) -> bool:
@@ -633,10 +705,35 @@ class CommandBuilder(ParamBuilder):
             **self._extra_click_kwargs
         )
         super().handle_params(**kwargs)
+        params = cast(click.Command, self.command).params
         for param_name in self.option_order:
             if param_name in self.composites:
                 builder = self.composites[param_name]
                 for composite_param_name in builder.option_order:
-                    self.command.params.append(builder.params[composite_param_name])
+                    params.append(builder.params[composite_param_name])
             else:
-                self.command.params.append(self.params[param_name])
+                params.append(self.params[param_name])
+
+
+class CommandBuilder(BaseCommandBuilder):
+    def __init__(
+        self,
+        to_wrap: Callable,
+        name: Optional[str] = None,
+        command_class: Type[AutoClickCommand] = AutoClickCommand,
+        **kwargs
+    ):
+        super().__init__(to_wrap, command_class, name, **kwargs)
+
+
+class GroupBuilder(BaseCommandBuilder):
+    def __init__(
+        self,
+        to_wrap: Callable,
+        name: Optional[str] = None,
+        command_class: Type[AutoClickGroup] = AutoClickGroup,
+        commands: Optional[Dict[str, click.Command]] = None,
+        **kwargs
+    ):
+        super().__init__(to_wrap, command_class, name, **kwargs)
+        self._extra_click_kwargs["commands"] = commands or {}

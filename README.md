@@ -104,7 +104,7 @@ def main(foo: Foo):
     print(foo.bar, foo.baz)
 ```
 
-In this case, the options to main would be `--foo_bar` and `--foo_baz`. Once the CLI is processed, the values of these options are used to construct the `Foo` instance, which is then passed to the call to `main`. The parameter name in the command function is prepended to the parameter names of the composite type, so that a composite type can be used multiple types in a command function signature.
+In this case, the options to main would be `--foo-bar` and `--foo-baz`. Once the CLI is processed, the values of these options are used to construct the `Foo` instance, which is then passed to the call to `main`. The parameter name in the command function is prepended to the parameter names of the composite type, so that a composite type can be used multiple types in a command function signature.
 
 A `autoclick.composite_factory` function returns a complex type. For example, the code below is equivalent to the code above:
 

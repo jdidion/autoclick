@@ -28,8 +28,34 @@ class Foo:
         return "{} {}".format(self.a, self.b)
 
 
-@autoclick.command()
+@autoclick.command
 def simple(foo: Foo, *args, bar: int = 1, baz: Optional[float] = None, **kwargs):
+    """Process some metasyntactic variables.
+
+    Args:
+        foo: A Foo
+        *args: Extra args
+        bar: A bar
+        baz: A baz
+        **kwargs: Extra kwargs
+    """
+    global SIMPLE_RESULT
+    SIMPLE_RESULT = dict(
+        foo=foo,
+        args=args,
+        bar=bar,
+        baz=baz,
+        kwargs=kwargs
+    )
+
+
+@autoclick.group
+def grp():
+    pass
+
+
+@grp.command("test")
+def simple2(foo: Foo, *args, bar: int = 1, baz: Optional[float] = None, **kwargs):
     """Process some metasyntactic variables.
 
     Args:
@@ -60,6 +86,17 @@ TEST_CASES = [
     CliTest(
         args=["1"],
         fn=simple,
+        expected=dict(
+            foo=Foo(1),
+            args=(),
+            bar=1,
+            baz=None,
+            kwargs={}
+        )
+    ),
+    CliTest(
+        args=["test", "1"],
+        fn=simple2,
         expected=dict(
             foo=Foo(1),
             args=(),
