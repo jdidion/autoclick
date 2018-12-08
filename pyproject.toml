@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "autoclick"
+version = "0.1.0"
+description = ""
+authors = ["jdidion <github@didion.net>"]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+click = "7.0+"
+docparse = "*"
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.0"
+pytest-cov = "^2.4"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
