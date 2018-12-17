@@ -1,12 +1,13 @@
 tests = tests
 module = autoclick
+version = 0.1.0
 #pytestops = "--full-trace"
 #pytestops = "-v -s"
 repo = jdidion/$(module)
 desc = Release $(version)
 
 BUILD = poetry build && pip install --upgrade dist/$(module)-$(version)-py3-none-any.whl $(installargs)
-TEST = pytest $(pytestops) $(tests)
+TEST  = pytest -m "not perf" --show-capture=all --cov --cov-report term-missing $(pytestopts) $(tests)
 
 all:
 	$(BUILD)
@@ -21,10 +22,6 @@ test:
 docs:
 	make -C docs api
 	make -C docs html
-
-readme:
-	pandoc --from=markdown --to=rst --output=README.rst README.md
-	pandoc --from=markdown --to=rst --output=CHANGES.rst CHANGES.md
 
 lint:
 	pylint $(module)
