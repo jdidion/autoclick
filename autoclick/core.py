@@ -13,6 +13,8 @@ from typing import (
 import click
 import docparse
 
+import pkg_resources
+pkg_resources.get_distribution("autoclick")
 
 LOG = logging.getLogger("AutoClick")
 UNDERSCORES = re.compile("_")
@@ -39,6 +41,8 @@ option_order: Specify an order of option processing that is different
 types: Dict mapping parameter names to functions that perform type
     conversion. By default, the type of a parameter is inferred from
     its annotation.
+positionals_as_options: Whether to treat positional arguments as required
+    options.
 conditionals: Dict mapping paramter names or tuples of parameter names to
     conditional functions or lists of conditinal functions.
 validations: Dict mapping paramter names or tuples of parameter names to
@@ -62,8 +66,6 @@ add_composite_prefixes: By default, the parameter name is added as a prefix
     each composite type may only be used for at most one parameter, and the
     user must ensure that no composite parameter names conflict with each
     other or with other parameter names in the annotated function.
-positionals_as_options: Whether to treat positional arguments as required
-    options.
 command_help: Command description. By default, this is extracted from the
     funciton docstring.
 option_class: Class to use when creating :class:`click.Option`s.
@@ -113,7 +115,7 @@ class ParameterInfo:
         self.anno_type = param.annotation
         self.click_type = click_type
         self.match_type = None
-        self.optional = not (required and param.default is EMPTY)
+        self.optional = not (required or param.default is EMPTY)
         self.default = param.default
         self.nargs = 1
         self.multiple = False
@@ -228,6 +230,7 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
         infer_short_names: bool = True,
         option_order: Optional[Sequence[str]] = None,
         types: Optional[Dict[str, Callable]] = None,
+        positionals_as_options: bool = False,
         conditionals: Dict[
             Union[str, Tuple[str, ...]], Union[Callable, List[Callable]]] = None,
         validations: Dict[
@@ -241,6 +244,7 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
         self._short_names = short_names or {}
         self._infer_short_names = infer_short_names
         self._option_order = option_order or []
+        self._positionals_as_options = positionals_as_options
         self._types = types or {}
         self._required = required or set()
         self._hidden = hidden or set()
@@ -309,17 +313,21 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
     def _create_click_parameter(
         self,
         param: ParameterInfo,
-        positionals_as_options: bool,
         used_short_names: Set[str],
         option_class: Type[click.Option],
         argument_class: Type[click.Argument],
         long_name_prefix: Optional[str] = None,
-        hidden: bool = False
+        hidden: bool = False,
+        force_positionals_as_options: bool = False
     ) -> click.Parameter:
         param_name = param.name
         long_name = self._get_long_name(param_name, long_name_prefix)
 
-        if param.optional or positionals_as_options:
+        if (
+            param.optional or
+            force_positionals_as_options or
+            self._positionals_as_options
+        ):
             if not param.is_flag:
                 long_name_decl = f"--{long_name}"
             elif long_name.startswith("no-"):
@@ -450,7 +458,8 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
         hidden: bool,
         help_text: str,
         option_class: Type[click.Option],
-        argument_class: Type[click.Argument]
+        argument_class: Type[click.Argument],
+        force_positionals_as_options: bool = False
     ) -> Tuple[Sequence[click.Parameter], Callable[[dict], None]]:
         """
         Create the Click parameters for this composite's signature.
@@ -463,6 +472,7 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
             help_text:
             option_class:
             argument_class:
+            force_positionals_as_options:
 
         Returns:
              A tuple (click_parameters, callback), where click_parameters is a
@@ -505,12 +515,12 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
             click_parameters = [
                 self._create_click_parameter(
                     param=self._parameters[opt],
-                    positionals_as_options=True,
                     used_short_names=used_short_names,
                     option_class=option_class,
                     argument_class=argument_class,
                     long_name_prefix=prefix,
-                    hidden=hidden
+                    hidden=hidden,
+                    force_positionals_as_options=force_positionals_as_options
                 )
                 for opt in self._option_order
             ]
@@ -522,23 +532,24 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
 
         return click_parameters, callback
 
-    def handle_args(self, param_values: dict, param: ParameterInfo, add_prefixes: bool):
+    def handle_args(self, ctx: click.Context, param: ParameterInfo, add_prefixes: bool):
         if self._parameters_as_args:
-            values = dict(zip(self._option_order, param_values.pop(param.name, ())))
+            values = dict(zip(self._option_order, ctx.params.pop(param.name, ())))
             _apply_to_parsed_args(self._conditionals, values, update=True)
             _apply_to_parsed_args(self._validations, values, update=False)
-            param_values[param.name] = self._decorated(**values)
+            ctx.params[param.name] = self._decorated(**values)
         else:
             prefix = param.name if add_prefixes else None
             kwargs = {}
             for composite_param_name in self._parameters.keys():
                 arg_name = self._get_long_name(composite_param_name, prefix)
-                kwargs[composite_param_name] = param_values.pop(arg_name, None)
-            param_values[param.name] = self._decorated(**kwargs)
+                kwargs[composite_param_name] = ctx.params.pop(arg_name, None)
+                ctx.params[param.name] = self._decorated(**kwargs)
 
 
 # noinspection PyPep8Naming
 class composite_type(Composite[type]):
+    @property
     def _match_type(self) -> D:
         return self._decorated
 
@@ -561,6 +572,7 @@ class composite_factory(Composite[Callable]):
         super().__init__(**kwargs)
         self._target = dest_type
 
+    @property
     def _match_type(self):
         return self._target
 
@@ -700,7 +712,6 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         name: Optional[str] = None,
         composite_types: Optional[Dict[str, Composite]] = None,
         add_composite_prefixes: bool = False,
-        positionals_as_options: bool = False,
         command_help: Optional[str] = None,
         option_class: Type[click.Option] = click.Option,
         argument_class: Type[click.Argument] = click.Argument,
@@ -712,7 +723,6 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         self._name = name
         self._composite_types = composite_types or {}
         self._add_composite_prefixes = add_composite_prefixes
-        self._positionals_as_options = positionals_as_options
         self._command_help = command_help
         self._option_class = option_class
         self._argument_class = argument_class
@@ -738,28 +748,9 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         return super()._handle_parameter_info(param)
 
     def _create_decorator(self) -> D:
-        composite_callbacks = []
-
-        desc = None
-        if self._docs and self._docs.description:
-            desc = str(self._docs.description)
-
-        click_command = self._create_click_command(
-            name=self.name,
-            callback=self._decorated,
-            help=desc,
-            conditionals=self._conditionals,
-            validations=self._validations,
-            composite_callbacks=composite_callbacks,
-            **self._extra_click_kwargs
-        )
-        if self._allow_extra_arguments:
-            click_command.allow_extra_arguments = True
-        if self._allow_extra_kwargs:
-            click_command.ignore_unknown_options = False
-
         parameter_infos = self._get_parameter_info()
-        command_params = cast(click.Command, click_command).params
+        command_params = []
+        composite_callbacks = []
 
         for param_name in self._option_order:
             param = parameter_infos[param_name]
@@ -778,18 +769,37 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
                     hidden=param.name in self._hidden,
                     option_class=self._option_class,
                     argument_class=self._argument_class,
-                    help_text=self._get_help(param.name)
+                    help_text=self._get_help(param.name),
+                    force_positionals_as_options=self._positionals_as_options
                 )
                 command_params.extend(click_parameters)
                 composite_callbacks.append(callback)
             else:
                 command_params.append(self._create_click_parameter(
                     param=param,
-                    positionals_as_options=self._positionals_as_options,
                     used_short_names=self._used_short_names,
                     option_class=self._option_class,
                     argument_class=self._argument_class
                 ))
+
+        desc = None
+        if self._docs and self._docs.description:
+            desc = str(self._docs.description)
+
+        click_command = self._create_click_command(
+            name=self.name,
+            callback=self._decorated,
+            help=desc,
+            conditionals=self._conditionals,
+            validations=self._validations,
+            composite_callbacks=composite_callbacks,
+            **self._extra_click_kwargs
+        )
+        click_command.params = command_params
+        if self._allow_extra_arguments:
+            click_command.allow_extra_arguments = True
+        if self._allow_extra_kwargs:
+            click_command.ignore_unknown_options = False
 
         return click_command
 

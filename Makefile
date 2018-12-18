@@ -1,13 +1,13 @@
 tests = tests
 module = autoclick
-version = 0.1.0
+version = 0.2.0
 #pytestops = "--full-trace"
 #pytestops = "-v -s"
 repo = jdidion/$(module)
 desc = Release $(version)
 
 BUILD = poetry build && pip install --upgrade dist/$(module)-$(version)-py3-none-any.whl $(installargs)
-TEST  = pytest -m "not perf" --show-capture=all --cov --cov-report term-missing $(pytestopts) $(tests)
+TEST  = pytest -vv -m "not perf" --show-capture=all --cov --cov-report term-missing $(pytestopts) $(tests)
 
 all:
 	$(BUILD)

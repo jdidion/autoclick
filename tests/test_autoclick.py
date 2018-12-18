@@ -20,15 +20,15 @@ class Foo:
         a: blah
         b: blorf
     """
-    def __init__(self, a: int, b: str = "foo"):
-        self.a = a
-        self.b = b
+    def __init__(self, num: int, name: str = "foo"):
+        self.num = num
+        self.name = name
 
     def __eq__(self, other):
-        return self.a == other.a and self.b == other.b
+        return self.num == other.num and self.name == other.name
 
-    def __str__(self):
-        return "{} {}".format(self.a, self.b)
+    def __repr__(self):
+        return "{} {}".format(self.num, self.name)
 
 
 @autoclick.command()
