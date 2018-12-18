@@ -8,7 +8,7 @@ The simplest use of AutoClick requires annotating your main method with `@autocl
 # test.py
 import autoclick
 
-@autoclick.command
+@autoclick.command()
 def main(greeting: str, name: str):
     print(f"{greeting} {name}")
 
@@ -52,11 +52,11 @@ class Bork:
     def __str__(self):
         print(",".join(["bork"] * self.n))
 
-@autoclick.conversion
+@autoclick.conversion()
 def bork(n: str) -> Bork:
     return Bork(n)
 
-@autoclick.command
+@autoclick.command()
 def main(bork: Bork):
     print(bork)
 ```
@@ -93,13 +93,13 @@ Note that any of the types in the `click.Types` package can also be used in this
 3. For composite types, the `autoclick.composite_type` and `autoclick.composite_factory` functions can be used. An example of a composite type is a class that requires more than one parameter to its constructor. For composite types, the same annotation-based CLI creation is performed, and the parameters are injected into the CLI in place of the composite parameter.
 
 ```python
-@autoclick.composite_type
+@autoclick.composite_type()
 class Foo:
     def __init__(bar: str, baz: int):
         self.bar = bar
         self.baz = baz
 
-@autoclick.command
+@autoclick.command()
 def main(foo: Foo):
     print(foo.bar, foo.baz)
 ```
@@ -203,10 +203,15 @@ Options:
 $ pip intall autoclick
 ```
 
-## Dependencies
+## Runtime Dependencies
 
 * Python 3.6+
 * docparse
+
+## Build dependencies
+
+* poetry 0.12+
+* pytest (with pytest-cov plugin)
 
 ## Details
 
