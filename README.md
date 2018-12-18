@@ -8,7 +8,7 @@ The simplest use of AutoClick requires annotating your main method with `@autocl
 # test.py
 import autoclick
 
-@autoclick.command()
+@autoclick.command("greet")
 def main(greeting: str, name: str):
     print(f"{greeting} {name}")
 
@@ -34,8 +34,18 @@ For additional customization, keyword arguments can be passed to the command ann
     },
     show_defaults=True
 )
-def main(greeting: str, name: str):
+def main(greeting: str = "hello", name: str = "human"):
     print(f"{greeting} {name}")
+```
+
+```bash
+$ python test.py --help
+Usage: test.py [OPTIONS]
+
+Options:
+  -G, --greeting TEXT  [default: hello]
+  -n, --name TEXT      [default: human]
+  --help               Show this message and exit.
 ```
 
 ## Type conversion
@@ -56,7 +66,7 @@ class Bork:
 def bork(n: str) -> Bork:
     return Bork(n)
 
-@autoclick.command()
+@autoclick.command("bork")
 def main(bork: Bork):
     print(bork)
 ```
@@ -72,6 +82,7 @@ DoubleInt = typing.NewType("DoubleInt", int)
 def double_int(i: str):
     return int(i) * 2
 
+@autoclick.command("double")
 def main(i1: int, i2: DoubleInt):
     print(i1, i2)
 ```
