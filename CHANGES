@@ -1,6 +1,17 @@
 AutoClick Changes
 ==================
 
+0.2.1 (2018.12.30)
+------------------
+* Add pass_context to command() and group() decorators
+* Fix AutoClickGroup parse_args()
+
+0.2.0 (2018.12.18)
+------------------
+* Code reorg
+* Name change to autoclick
+* Better support for composites
+
 0.1.0 (2018.12.04)
 ------------------
 * Initial release

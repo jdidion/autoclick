@@ -22,6 +22,8 @@ ALPHA_CHARS = set(chr(i) for i in tuple(range(97, 123)) + tuple(range(65, 91)))
 EMPTY = inspect.Signature.empty
 EMPTY_OR_NONE = {EMPTY, None}
 
+PASS_CONTEXT = False
+
 CONVERSIONS: Dict[Type, click.ParamType] = {}
 VALIDATIONS: Dict[Type, List[Callable]] = {}
 COMPOSITES: Dict[Type, "Composite"] = {}
@@ -116,7 +118,7 @@ class ParameterInfo:
         self.click_type = click_type
         self.match_type = None
         self.optional = not (required or param.default is EMPTY)
-        self.default = param.default
+        self.default = None if param.default is EMPTY else param.default
         self.nargs = 1
         self.multiple = False
         self.extra_arguments = (param.kind is inspect.Parameter.VAR_POSITIONAL)
@@ -344,13 +346,12 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
 
             return option_class(
                 param_decls,
-                type=param.click_type,
+                type=None if param.is_flag else param.click_type,
                 required=not param.optional,
                 default=param.default,
                 show_default=self._show_defaults,
                 nargs=param.nargs,
                 hidden=hidden or param_name in self._hidden,
-                is_flag=param.is_flag,
                 multiple=param.multiple,
                 help=self._get_help(param_name)
             )
@@ -635,7 +636,7 @@ class CommandMixin:
         self._used_short_names = used_short_names or {}
 
     def parse_args(self, ctx, args):
-        args = cast(click.Command, super()).parse_args(ctx, args)
+        click.Command.parse_args(cast(click.Command, self), ctx, args)
         _apply_to_parsed_args(self._conditionals, ctx.params, update=True)
         _apply_to_parsed_args(self._validations, ctx.params, update=False)
         for callback in self._composite_callbacks:
@@ -654,7 +655,10 @@ class AutoClickGroup(CommandMixin, click.Group):
     """
     Subclass of :class:`click.Group` that also inherits :class:`CommandMixin`.
     """
-    def command(self, name: str = None, **kwargs):
+    def command(
+        self, name: Optional[str] = None, decorated: Optional[Callable] = None,
+        **kwargs
+    ):
         """A shortcut decorator for declaring and attaching a command to
         the group.  This takes the same arguments as :func:`command` but
         immediately registers the created command with this instance by
@@ -669,9 +673,16 @@ class AutoClickGroup(CommandMixin, click.Group):
             click_command = cmd(f)
             self.add_command(click_command)
             return click_command
-        return decorator
 
-    def group(self, name: str = None, **kwargs):
+        if decorated:
+            return decorator(decorated)
+        else:
+            return decorator
+
+    def group(
+        self, name: Optional[str] = None, decorated: Optional[Callable] = None,
+        **kwargs
+    ):
         """A shortcut decorator for declaring and attaching a group to
         the group.  This takes the same arguments as :func:`group` but
         immediately registers the created command with this instance by
@@ -686,7 +697,11 @@ class AutoClickGroup(CommandMixin, click.Group):
             click_group = grp(f)
             self.add_command(click_group)
             return click_group
-        return decorator
+
+        if decorated:
+            return decorator(decorated)
+        else:
+            return decorator
 
     def parse_args(self, ctx, args):
         if not args and self.no_args_is_help and not ctx.resilient_parsing:
@@ -717,6 +732,7 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         argument_class: Type[click.Argument] = click.Argument,
         extra_click_kwargs: Optional[dict] = None,
         used_short_names: Optional[Set[str]] = None,
+        pass_context: Optional[bool] = None,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -730,6 +746,7 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         self._used_short_names = set()
         if used_short_names:
             self._used_short_names.update(used_short_names)
+        self._pass_context = pass_context
         self._allow_extra_arguments = False
         self._allow_extra_kwargs = False
 
@@ -751,6 +768,19 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         parameter_infos = self._get_parameter_info()
         command_params = []
         composite_callbacks = []
+
+        if self._pass_context:
+            ctx_param = list(parameter_infos.keys())[0]
+            if parameter_infos[ctx_param].anno_type in {click.Context, EMPTY, None}:
+                parameter_infos.pop(ctx_param)
+                if ctx_param in self._option_order:
+                    self._option_order.remove(ctx_param)
+            else:
+                LOG.warning(
+                    "pass_context set to True, but first parameter of function %s "
+                    "does not appear to be of type click.Context",
+                    self.name
+                )
 
         for param_name in self._option_order:
             param = parameter_infos[param_name]
@@ -786,9 +816,14 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         if self._docs and self._docs.description:
             desc = str(self._docs.description)
 
+        callback = self._decorated
+        if self._pass_context:
+            callback = click.pass_context(callback)
+
+        # TODO: pass `no_args_is_help=True` unless there are no required parameters
         click_command = self._create_click_command(
             name=self.name,
-            callback=self._decorated,
+            callback=callback,
             help=desc,
             conditionals=self._conditionals,
             validations=self._validations,
@@ -942,18 +977,34 @@ def validation(
             _match_type = _get_match_type(f)
 
         if depends:
-            def composite_validation(*args, **kwargs):
+            def composite_validation(**kwargs):
                 for dep in depends:
-                    dep(*args, **kwargs)
-                f(*args, **kwargs)
+                    dep(**kwargs)
+                f(**kwargs)
             target = composite_validation
         else:
             target = f
 
+        # Annotated validation functions can only ever validate a single parameter
+        # so we can explicitly specify the param name and value as kwargs to the
+        # decorated function.
+        def call_target(**kwargs):
+            if len(kwargs) == 2 and set(kwargs.keys()) == {"param_name", "value"}:
+                pass
+            elif len(kwargs) != 1:
+                print(kwargs)
+                raise ValueError(
+                    "A @validation decorator may only validate a single parameter."
+                )
+            else:
+                kwargs = dict(zip(("param_name", "value"), list(kwargs.items())[0]))
+            if kwargs["value"] is not None:
+                target(**kwargs)
+
         if match_type not in VALIDATIONS:
             VALIDATIONS[_match_type] = []
-        VALIDATIONS[_match_type].append(target)
-        return target
+        VALIDATIONS[_match_type].append(call_target)
+        return call_target
 
     return decorator
 

@@ -17,8 +17,8 @@ class Foo:
     A Foo.
 
     Args:
-        a: blah
-        b: blorf
+        num: blah
+        name: blorf
     """
     def __init__(self, num: int, name: str = "foo"):
         self.num = num
