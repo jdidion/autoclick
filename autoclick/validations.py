@@ -1,6 +1,6 @@
 from enum import Enum
 import operator
-import pathlib
+import os
 from typing import Callable
 
 from autoclick.core import ValidationError, validation
@@ -58,4 +58,34 @@ def readable_dir(param_name: str, value: pathlib.Path):
     if not value.is_dir():
         raise ValidationError(
             f"Parameter {param_name} value {value} is not a directory."
+        )
+
+
+@validation(WritablePath)
+def writable_path(param_name: str, value: pathlib.Path):
+    existing = value
+    while not existing.exists():
+        if existing.parent:
+            existing = existing.parent
+        else:
+            break
+    if not os.access(existing, os.W_OK):
+        raise ValidationError(
+            f"Parameter {param_name} value {value} is not writable."
+        )
+
+
+@validation(WritableFile, depends=(writable_path,))
+def writable_file(param_name: str, value: pathlib.Path):
+    if value.exists() and not value.is_file():
+        raise ValidationError(
+            f"Parameter {param_name} value {value} exists and is not a file."
+        )
+
+
+@validation(WritableDir, depends=(writable_path,))
+def writable_dir(param_name: str, value: pathlib.Path):
+    if value.exists() and not value.is_dir():
+        raise ValidationError(
+            f"Parameter {param_name} value {value} exists and is not a directory."
         )

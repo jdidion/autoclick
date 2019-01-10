@@ -22,7 +22,7 @@ ALPHA_CHARS = set(chr(i) for i in tuple(range(97, 123)) + tuple(range(65, 91)))
 EMPTY = inspect.Signature.empty
 EMPTY_OR_NONE = {EMPTY, None}
 
-PASS_CONTEXT = False
+GLOBAL_CONFIG = {}
 
 CONVERSIONS: Dict[Type, click.ParamType] = {}
 VALIDATIONS: Dict[Type, List[Callable]] = {}
@@ -176,13 +176,15 @@ class ParameterInfo:
         if hasattr(self.anno_type, "__origin__"):
             origin = self.anno_type.__origin__
 
-            # Resolve Tuples with specified arguments
-            if (
-                self.click_type is None and
-                origin == typing.Tuple and
-                self.anno_type.__args__
-            ):
-                self.click_type = click.Tuple(self.anno_type.__args__)
+            if hasattr(self.anno_type, "__args__"):
+                if origin == typing.Tuple:
+                    # Resolve Tuples with specified arguments
+                    if self.click_type is None:
+                        self.click_type = click.Tuple(self.anno_type.__args__)
+                    else:
+                        self.match_type = self.anno_type
+                elif len(self.anno_type.__args__) == 1:
+                    self.match_type = self.anno_type.__args__[0]
 
             self.anno_type = origin
 
@@ -244,7 +246,9 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
     ):
         self._keep_underscores = keep_underscores
         self._short_names = short_names or {}
-        self._infer_short_names = infer_short_names
+        self._infer_short_names = GLOBAL_CONFIG.get(
+            "infer_short_names", infer_short_names
+        )
         self._option_order = option_order or []
         self._positionals_as_options = positionals_as_options
         self._types = types or {}
@@ -746,7 +750,7 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         self._used_short_names = set()
         if used_short_names:
             self._used_short_names.update(used_short_names)
-        self._pass_context = pass_context
+        self._pass_context = GLOBAL_CONFIG.get("pass_context", pass_context)
         self._allow_extra_arguments = False
         self._allow_extra_kwargs = False
 

@@ -1,3 +1,5 @@
+import typing
+
 from autoclick.core import (
     SignatureError, ValidationError, ParameterCollisionError, TypeCollisionError,
     conversion, create_composite, composite_type, composite_factory, validation,
@@ -7,10 +9,17 @@ from autoclick.types import *
 from autoclick.validations import *
 
 
-def always_pass_context():
+def set_global(name: str, value: typing.Any):
     """
-    Configure AutoClick to always pass the context to command functions,
-    so that it is not required to specify pass_context=True to every
+    Configure global AutoClick settings:
+
+    * "pass_context": (bool) whether to always/never pass the context to command
+    functions, so that it is not required to specify pass_context=True to every
     command/group decorator.
+    * "infer_short_names": (bool) whether to always/never infer paramter short names.
+
+    Args:
+        name: The global parameter name.
+        value: The paramter value.
     """
-    core.PASS_CONTEXT = True
+    core.GLOBAL_CONFIG[name] = value
