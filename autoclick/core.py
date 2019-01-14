@@ -116,7 +116,6 @@ class ParameterInfo:
         self.name = name
         self.anno_type = param.annotation
         self.click_type = click_type
-        self.match_type = None
         self.optional = not (required or param.default is EMPTY)
         self.default = None if param.default is EMPTY else param.default
         self.nargs = 1
@@ -163,14 +162,14 @@ class ParameterInfo:
                     f"Union type not supported for parameter {name}"
                 )
 
-        # Resolve NewType
-        if (
-            inspect.isfunction(self.anno_type) and
-            hasattr(self.anno_type, "__supertype__")
-        ):
-            self.match_type = self.anno_type
-            # TODO: this won't work for nested type hierarchies
-            self.anno_type = self.anno_type.__supertype__
+        self.match_type = self.anno_type
+
+        def resolve_new_type(t):
+            return t.__supertype__ if (
+                inspect.isfunction(t) and hasattr(t, "__supertype__")
+            ) else t
+
+        self.anno_type = resolve_new_type(self.anno_type)
 
         # Resolve meta-types
         if hasattr(self.anno_type, "__origin__"):
@@ -180,9 +179,9 @@ class ParameterInfo:
                 if origin == typing.Tuple:
                     # Resolve Tuples with specified arguments
                     if self.click_type is None:
-                        self.click_type = click.Tuple(self.anno_type.__args__)
-                    else:
-                        self.match_type = self.anno_type
+                        self.click_type = click.Tuple([
+                            resolve_new_type(a) for a in self.anno_type.__args__
+                        ])
                 elif len(self.anno_type.__args__) == 1:
                     self.match_type = self.anno_type.__args__[0]
 
@@ -192,7 +191,7 @@ class ParameterInfo:
         while hasattr(self.anno_type, "__extra__"):
             self.anno_type = self.anno_type.__extra__
 
-        # Allow multiple values when type is a non-string collection
+        # Allow multiple values when type is a click.Tuple
         if isinstance(self.click_type, click.Tuple):
             self.nargs = len(cast(click.Tuple, self.click_type).types)
 
@@ -229,7 +228,7 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
     """
     def __init__(
         self,
-        keep_underscores: bool = True,
+        keep_underscores: bool = False,
         short_names: Optional[Dict[str, str]] = None,
         infer_short_names: bool = True,
         option_order: Optional[Sequence[str]] = None,
@@ -245,7 +244,9 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
         param_help: Optional[Dict[str, str]] = None,
         decorated: Optional[Callable] = None
     ):
-        self._keep_underscores = keep_underscores
+        self._keep_underscores = GLOBAL_CONFIG.get(
+            "keep_underscores", keep_underscores
+        )
         self._short_names = short_names or {}
         self._infer_short_names = GLOBAL_CONFIG.get(
             "infer_short_names", infer_short_names
@@ -267,7 +268,7 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
                 return dict(
                     (
                         k if isinstance(k, tuple) else (k,),
-                        list(v) if v and not isinstance(v, list) else v
+                        [v] if v and not isinstance(v, list) else v
                     )
                     for k, v in d.items()
                 )
@@ -434,9 +435,9 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
         parameters_as_args: bool = False,
         **kwargs
     ):
-        super().__init__(**kwargs)
         self._parameters_as_args = parameters_as_args
         self._parameters = None
+        super().__init__(**kwargs)
 
     @property
     @abstractmethod
