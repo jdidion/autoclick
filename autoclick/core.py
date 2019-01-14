@@ -242,7 +242,8 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
         required: Optional[Sequence[str]] = None,
         hidden: Optional[Sequence[str]] = None,
         show_defaults: bool = False,
-        param_help: Optional[Dict[str, str]] = None
+        param_help: Optional[Dict[str, str]] = None,
+        decorated: Optional[Callable] = None
     ):
         self._keep_underscores = keep_underscores
         self._short_names = short_names or {}
@@ -273,6 +274,9 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
 
         self._conditionals = _as_many_to_many(conditionals)
         self._validations = _as_many_to_many(validations)
+
+        if decorated:
+            self(decorated=decorated)
 
     def __call__(self, decorated: Callable) -> D:
         self._decorated = decorated
@@ -436,7 +440,7 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def _match_type(self) -> D:
+    def _match_type(self):
         pass
 
     def _handle_parameter_info(self, param: ParameterInfo) -> bool:
@@ -555,7 +559,7 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
 # noinspection PyPep8Naming
 class composite_type(Composite[type]):
     @property
-    def _match_type(self) -> D:
+    def _match_type(self):
         return self._decorated
 
 
@@ -730,7 +734,7 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         self,
         name: Optional[str] = None,
         composite_types: Optional[Dict[str, Composite]] = None,
-        add_composite_prefixes: bool = False,
+        add_composite_prefixes: bool = True,
         command_help: Optional[str] = None,
         option_class: Type[click.Option] = click.Option,
         argument_class: Type[click.Argument] = click.Argument,
@@ -742,7 +746,9 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         super().__init__(**kwargs)
         self._name = name
         self._composite_types = composite_types or {}
-        self._add_composite_prefixes = add_composite_prefixes
+        self._add_composite_prefixes = GLOBAL_CONFIG.get(
+            "add_composite_prefixes", add_composite_prefixes
+        )
         self._command_help = command_help
         self._option_class = option_class
         self._argument_class = argument_class
@@ -923,7 +929,8 @@ class ParamTypeAdapter(click.ParamType):
 
 def conversion(
     dest_type: Optional[Type] = None,
-    depends: Optional[Tuple[Callable, ...]] = None
+    depends: Optional[Tuple[Callable, ...]] = None,
+    decorated: Optional[Callable] = None
 ):
     """Annotates a conversion function.
 
@@ -934,6 +941,7 @@ def conversion(
             order, with the output from each function being passed as the input
             to the next. The type of the parameter to the conversion function
             must be the return type of the last dependency.
+        decorated: The function to decorate.
 
     Returns:
         A decorator function.
@@ -957,12 +965,16 @@ def conversion(
         CONVERSIONS[_dest_type] = click_type
         return target
 
-    return decorator
+    if decorated:
+        return decorator(decorated)
+    else:
+        return decorator
 
 
 def validation(
     match_type: Optional[Type] = None,
-    depends: Optional[Tuple[Callable, ...]] = None
+    depends: Optional[Tuple[Callable, ...]] = None,
+    decorated: Optional[Callable] = None
 ):
     """Annotates a single-parameter validation.
 
@@ -971,6 +983,7 @@ def validation(
             from the type of the first parameter in the signature of the annotated
             function.
         depends: Other validations that are pre-requisite for this one.
+        decorated: The function to decorate.
 
     Returns:
         A decorator function.
@@ -1010,7 +1023,10 @@ def validation(
         VALIDATIONS[_match_type].append(call_target)
         return call_target
 
-    return decorator
+    if decorated:
+        return decorator(decorated)
+    else:
+        return decorator
 
 
 def _apply_to_parsed_args(d, values: dict, update=False):

@@ -1,7 +1,7 @@
 from enum import Enum
 import operator
 import os
-from typing import Callable
+from typing import Callable, Tuple, Union
 
 from autoclick.core import ValidationError, validation
 from autoclick.types import *
@@ -35,6 +35,29 @@ class Defined:
 
 def ge_defined(n: int):
     return Defined(n, Comparison.GE)
+
+
+class Mutex:
+    def __init__(self, *groups: Union[int, Tuple[int, ...]], max_defined: int = 1):
+        self.groups = groups
+        self.max_defined = max_defined
+
+    def __call__(self, **kwargs):
+        args = list(kwargs.items())
+        defined = []
+        for group in self.groups:
+            if isinstance(group, int):
+                group = [group]
+            for i in group:
+                if args[i][1] is not None:
+                    defined.append(group)
+                    break
+        if len(defined) > self.max_defined:
+            group_str = ",".join(f"({','.join(str(i) for i in g)})" for g in defined)
+            raise ValidationError(
+                f"Values specified for > {self.max_defined} mutually exclusive groups: "
+                f"{group_str}"
+            )
 
 
 @validation(ReadablePath)
