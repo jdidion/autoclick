@@ -6,6 +6,7 @@
 * Fix handling of collection types
 * Add new Mutex validation
 * Add ability to pass function/class to be decorted to most decorators
+* Fix argument parsing when using prefixes for composite types
 
 ## 0.2.2 (2018.12.30)
 
