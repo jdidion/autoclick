@@ -1,6 +1,6 @@
 # AutoClick Changes
 
-## 0.2.3 (Unpublished)
+## 0.2.3 (2019.01.15)
 
 * Add generic GLOBAL_OPTIONS
 * Fix handling of collection types
