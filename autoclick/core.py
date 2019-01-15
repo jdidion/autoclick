@@ -549,10 +549,12 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
             _apply_to_parsed_args(self._validations, values, update=False)
             ctx.params[param.name] = self._decorated(**values)
         else:
-            prefix = param.name if add_prefixes else None
             kwargs = {}
             for composite_param_name in self._parameters.keys():
-                arg_name = self._get_long_name(composite_param_name, prefix)
+                if add_prefixes:
+                    arg_name = f"{param.name}_{composite_param_name}"
+                else:
+                    arg_name = composite_param_name
                 kwargs[composite_param_name] = ctx.params.pop(arg_name, None)
                 ctx.params[param.name] = self._decorated(**kwargs)
 
