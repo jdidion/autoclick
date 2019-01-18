@@ -10,6 +10,8 @@ from typing import (
     Union, cast
 )
 
+from .types import OptionalTuple
+
 import click
 import docparse
 
@@ -157,6 +159,7 @@ class ParameterInfo:
             if len(filtered_args) == 1:
                 self.anno_type = filtered_args.pop()
                 self.optional = True
+                self.default = None
             else:
                 raise SignatureError(
                     f"Union type not supported for parameter {name}"
@@ -194,6 +197,23 @@ class ParameterInfo:
         # Allow multiple values when type is a click.Tuple
         if isinstance(self.click_type, click.Tuple):
             self.nargs = len(cast(click.Tuple, self.click_type).types)
+            if self.default is None:
+                # Substitute a subclass of click.Tuple that will convert a sequence
+                # of all None's to a None
+                self.default = (None,) * self.nargs
+                self.click_type = OptionalTuple(self.click_type.types)
+            elif not isinstance(self.default, collections.Collection):
+                raise SignatureError(
+                    f"Default value of paramter {self.name} of type Tuple must be a "
+                    f"collection."
+                )
+            else:
+                arrity = len(tuple(self.default))
+                if arrity != self.nargs:
+                    raise SignatureError(
+                        f"Default value of paramter {self.name} of type Tuple must be a "
+                        f"collection having the same arrity; {arrity} != {self.nargs}"
+                    )
 
         # Collection types are treated as parameters that can be specified
         # multiple times

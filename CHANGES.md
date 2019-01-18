@@ -1,5 +1,9 @@
 # AutoClick Changes
 
+## 0.2.4 (Unpublished)
+
+* Handle tuple types for which the desired default value is `None` (rather than a sequence of `None`s)
+
 ## 0.2.3 (2019.01.15)
 
 * Add generic GLOBAL_OPTIONS

@@ -1,6 +1,6 @@
 tests = tests
 module = autoclick
-version = 0.2.3
+version = 0.2.4
 #pytestops = "--full-trace"
 #pytestops = "-v -s"
 repo = jdidion/$(module)
