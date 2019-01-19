@@ -3,6 +3,8 @@
 ## 0.2.4 (Unpublished)
 
 * Handle tuple types for which the desired default value is `None` (rather than a sequence of `None`s)
+* Make ValidationError inherit from UsageError
+* Fix Defined validations
 
 ## 0.2.3 (2019.01.15)
 

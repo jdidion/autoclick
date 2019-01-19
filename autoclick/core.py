@@ -84,11 +84,6 @@ class SignatureError(Exception):
     """
 
 
-class ValidationError(Exception):
-    """Raised by a validation function when an input violates a constraint.
-    """
-
-
 class ParameterCollisionError(Exception):
     """Raised when a composite paramter has the same name as one in the parent
     function.
@@ -98,6 +93,11 @@ class ParameterCollisionError(Exception):
 class TypeCollisionError(Exception):
     """Raised when a decorator is defined for a type for which a decorator of the
     same kind has already been defined.
+    """
+
+
+class ValidationError(click.UsageError):
+    """Raised by a validation function when an input violates a constraint.
     """
 
 

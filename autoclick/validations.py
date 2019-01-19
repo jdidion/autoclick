@@ -26,7 +26,8 @@ class Defined:
         self.cmp = cmp
 
     def __call__(self, **kwargs):
-        if not self.cmp.fn(self.n, len(kwargs)):
+        defined = len(tuple(filter(None, kwargs.values())))
+        if not self.cmp.fn(defined, self.n):
             raise ValidationError(
                 f"Of the following parameters, the number defined must be " 
                 f"{self.cmp.symbol} {self.n}: {','.join(kwargs.keys())}"
