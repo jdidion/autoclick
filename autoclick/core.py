@@ -449,13 +449,21 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
     Note that composite parameters cannot be nested, i.e. a parameter cannot be a
     list of composite types, and a composite type cannot itself have composite type
     parameters - either of these will raise a :class:`SignatureError`.
+
+    Args:
+        parameters_as_args: Whether to treat all parameters as Arguments regardless
+            of whether they are optional or required.
+        force_create: Always create an instance of the composite type, even if all
+            the parameter values are `None`.
     """
     def __init__(
         self,
         parameters_as_args: bool = False,
+        force_create: bool = False,
         **kwargs
     ):
         self._parameters_as_args = parameters_as_args
+        self.force_create = force_create
         self._parameters = None
         super().__init__(**kwargs)
 
@@ -564,10 +572,9 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
 
     def handle_args(self, ctx: click.Context, param: ParameterInfo, add_prefixes: bool):
         if self._parameters_as_args:
-            values = dict(zip(self._option_order, ctx.params.pop(param.name, ())))
-            _apply_to_parsed_args(self._conditionals, values, update=True)
-            _apply_to_parsed_args(self._validations, values, update=False)
-            ctx.params[param.name] = self._decorated(**values)
+            kwargs = dict(zip(self._option_order, ctx.params.pop(param.name, ())))
+            _apply_to_parsed_args(self._conditionals, kwargs, update=True)
+            _apply_to_parsed_args(self._validations, kwargs, update=False)
         else:
             kwargs = {}
             for composite_param_name in self._parameters.keys():
@@ -576,7 +583,15 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
                 else:
                     arg_name = composite_param_name
                 kwargs[composite_param_name] = ctx.params.pop(arg_name, None)
-                ctx.params[param.name] = self._decorated(**kwargs)
+
+        if (
+            self.force_create or
+            not param.optional or
+            tuple(filter(None, kwargs.values()))
+        ):
+            ctx.params[param.name] = self._decorated(**kwargs)
+        else:
+            ctx.params[param.name] = None
 
 
 # noinspection PyPep8Naming
