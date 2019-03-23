@@ -106,11 +106,12 @@ class ParameterInfo:
     :class:`inspect.Parameter`.
 
     Args:
-        name: The parameter name
-        param: A :class:`inspect.Parameter`
-        click_type: The conversion function, if specified explicitly
-        required: Whether this is explicitly specified to be a required parameter
+        name: The parameter name.
+        param: A :class:`inspect.Parameter`.
+        click_type: The conversion function, if specified explicitly.
+        required: Whether this is explicitly specified to be a required parameter.
     """
+
     def __init__(
         self, name: str, param: inspect.Parameter, click_type: Optional[type] = None,
         required: bool = False
@@ -211,8 +212,8 @@ class ParameterInfo:
                 arrity = len(tuple(self.default))
                 if arrity != self.nargs:
                     raise SignatureError(
-                        f"Default value of paramter {self.name} of type Tuple must be a "
-                        f"collection having the same arrity; {arrity} != {self.nargs}"
+                        f"Default value of paramter {self.name} of type Tuple must be "
+                        f"a collection having the same arrity; {arrity} != {self.nargs}"
                     )
 
         # Collection types are treated as parameters that can be specified
@@ -239,13 +240,14 @@ class ParameterInfo:
         )
 
 
-D = TypeVar("D")
+_D = TypeVar("_D")
 
 
-class BaseDecorator(Generic[D], metaclass=ABCMeta):
+class BaseDecorator(Generic[_D], metaclass=ABCMeta):
     """
-    Base class for decorators that create Click parameters.
+    Base class for decorators of groups, commands, and composites.
     """
+
     def __init__(
         self,
         keep_underscores: bool = False,
@@ -299,13 +301,14 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
         if decorated:
             self(decorated=decorated)
 
-    def __call__(self, decorated: Callable) -> D:
+    def __call__(self, decorated: Callable) -> _D:
         self._decorated = decorated
+        # TODO: support other docstring styles
         self._docs = docparse.parse_docs(decorated, docparse.DocStyle.GOOGLE)
         return self._create_decorator()
 
     @abstractmethod
-    def _create_decorator(self) -> D:
+    def _create_decorator(self) -> _D:
         pass
 
     def _get_parameter_info(self) -> Dict[str, ParameterInfo]:
@@ -331,6 +334,17 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
         return parameter_infos
 
     def _handle_parameter_info(self, param: ParameterInfo) -> bool:
+        """
+        Register parameter. Subclasses can override this method to filter out
+        some paramters.
+
+        Args:
+            param: A :class:`ParameterInfo`.
+
+        Returns:
+            True if this parameter should be added to the parser.
+        """
+
         if param.name not in self._option_order:
             self._option_order.append(param.name)
         if param.match_type in VALIDATIONS:
@@ -351,6 +365,23 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
         hidden: bool = False,
         force_positionals_as_options: bool = False
     ) -> click.Parameter:
+        """Create a click.Parameter instance (either Option or Argument).
+
+        Args:
+            param: A :class:`ParameterInfo`.
+            used_short_names: A set of short names that have been used by other
+                parameters and thus should not be re-used.
+            option_class: Class to instantiate for option parameters.
+            argument_class: Class to instantiate for argument parameters.
+            long_name_prefix: Prefix to add to long option names.
+            hidden: Whether to not show the parameter in help text.
+            force_positionals_as_options: Whether to force positional arguments to be
+                treated as options.
+
+        Returns:
+            A :class:`click.Parameter`.
+        """
+
         param_name = param.name
         long_name = self._get_long_name(param_name, long_name_prefix)
 
@@ -437,7 +468,7 @@ class BaseDecorator(Generic[D], metaclass=ABCMeta):
             return str(self._docs.parameters[name].description)
 
 
-class Composite(BaseDecorator[D], metaclass=ABCMeta):
+class Composite(BaseDecorator[_D], metaclass=ABCMeta):
     """
     Represents a complex type that requires values from multiple parameters. A
     composite parameter is defined by annotating a class using the `composite_type`
@@ -455,6 +486,7 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
             of whether they are optional or required.
         force_create: Always create an instance of the composite type, even if all
             the parameter values are `None`.
+        kwargs: Keyword arguments passed to :class:`BaseDecorator` constructor.
     """
     def __init__(
         self,
@@ -469,7 +501,9 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def _match_type(self):
+    def _match_type(self) -> Callable:
+        """The
+        """
         pass
 
     def _handle_parameter_info(self, param: ParameterInfo) -> bool:
@@ -479,7 +513,7 @@ class Composite(BaseDecorator[D], metaclass=ABCMeta):
             )
         return super()._handle_parameter_info(param)
 
-    def _create_decorator(self) -> D:
+    def _create_decorator(self) -> _D:
         self._parameters = self._get_parameter_info()
         if self._match_type in COMPOSITES:
             raise TypeCollisionError(
@@ -700,9 +734,20 @@ class AutoClickCommand(CommandMixin, click.Command):
 class AutoClickGroup(CommandMixin, click.Group):
     """
     Subclass of :class:`click.Group` that also inherits :class:`CommandMixin`.
+
+    Args:
+        match_prefix: Whether to look for a command that starts with the specified
+            name if the command name cannot be matched exactly.
     """
+
+    def __init__(self, *args, match_prefix: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._match_prefix = match_prefix
+
     def command(
-        self, name: Optional[str] = None, decorated: Optional[Callable] = None,
+        self,
+        name: Optional[str] = None,
+        decorated: Optional[Callable] = None,
         **kwargs
     ):
         """A shortcut decorator for declaring and attaching a command to
@@ -726,7 +771,9 @@ class AutoClickGroup(CommandMixin, click.Group):
             return decorator
 
     def group(
-        self, name: Optional[str] = None, decorated: Optional[Callable] = None,
+        self,
+        name: Optional[str] = None,
+        decorated: Optional[Callable] = None,
         **kwargs
     ):
         """A shortcut decorator for declaring and attaching a group to
@@ -749,6 +796,19 @@ class AutoClickGroup(CommandMixin, click.Group):
         else:
             return decorator
 
+    def get_command(self, ctx, cmd_name):
+        cmd = click.Group.get_command(self, ctx, cmd_name)
+        if cmd is not None:
+            return cmd
+
+        matches = [x for x in self.list_commands(ctx) if x.startswith(cmd_name)]
+        if not matches:
+            return None
+        elif len(matches) == 1:
+            return click.Group.get_command(self, ctx, matches[0])
+        else:
+            ctx.fail(f"Too many matches: {', '.join(sorted(matches))}")
+
     def parse_args(self, ctx, args):
         if not args and self.no_args_is_help and not ctx.resilient_parsing:
             click.echo(ctx.get_help(), color=ctx.color)
@@ -764,7 +824,87 @@ class AutoClickGroup(CommandMixin, click.Group):
         return ctx.args
 
 
-class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
+class DefaultAutoClickGroup(AutoClickGroup):
+    """
+
+    """
+    def __init__(
+        self,
+        *args,
+        invoke_without_command: bool = None,
+        no_args_is_help: bool = None,
+        default: Optional[str] = None,
+        default_if_no_args: bool = False,
+        **kwargs
+    ):
+        if default_if_no_args:
+            if invoke_without_command is False or no_args_is_help is True:
+                raise ValueError(
+                    "One one of 'no_args_is_help', 'default_if_no_args' may be True."
+                )
+            invoke_without_command = True
+            no_args_is_help = False
+
+        super().__init__(
+            *args, invoke_without_command=invoke_without_command,
+            no_args_is_help=no_args_is_help, **kwargs
+        )
+        self._default_cmd_name = default
+        self._default_if_no_args = default_if_no_args
+
+    def set_default_command(self, cmd):
+        """Sets a command function as the default command.
+        """
+        self._default_cmd_name = cmd.name
+        self.add_command(cmd)
+
+    def parse_args(self, ctx, args):
+        if not args and self._default_if_no_args:
+            args.insert(0, self._default_cmd_name)
+        return super().parse_args(ctx, args)
+
+    def get_command(self, ctx, cmd_name):
+        if cmd_name not in self.commands:
+            # No command name matched.
+            ctx.arg0 = cmd_name
+            cmd_name = self._default_cmd_name
+        return super().get_command(ctx, cmd_name)
+
+    def resolve_command(self, ctx, args):
+        base = super()
+        cmd_name, cmd, args = base.resolve_command(ctx, args)
+        if hasattr(ctx, 'arg0'):
+            args.insert(0, ctx.arg0)
+        return cmd_name, cmd, args
+
+    def format_commands(self, ctx, formatter):
+        formatter = DefaultCommandFormatter(self, formatter, mark='*')
+        return super().format_commands(ctx, formatter)
+
+
+class DefaultCommandFormatter:
+    """Wraps a formatter to mark a default command.
+    """
+
+    def __init__(self, group_, formatter, mark='*'):
+        self._group = group_
+        self._formatter = formatter
+        self._mark = mark
+
+    def __getattr__(self, attr):
+        return getattr(self.formatter, attr)
+
+    def write_dl(self, rows, *args, **kwargs):
+        rows_ = []
+        for cmd_name, help_str in rows:
+            if cmd_name == self._group.default_cmd_name:
+                rows_.insert(0, (cmd_name + self._mark, help_str))
+            else:
+                rows_.append((cmd_name, help))
+        return self._formatter.write_dl(rows_, *args, **kwargs)
+
+
+class BaseCommandDecorator(BaseDecorator[_D], metaclass=ABCMeta):
     """
     Base class for decorators that wrap command functions.
     """
@@ -812,7 +952,7 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
             return False
         return super()._handle_parameter_info(param)
 
-    def _create_decorator(self) -> D:
+    def _create_decorator(self) -> _D:
         parameter_infos = self._get_parameter_info()
         command_params = []
         composite_callbacks = []
@@ -887,7 +1027,7 @@ class BaseCommandDecorator(BaseDecorator[D], metaclass=ABCMeta):
         return click_command
 
     @abstractmethod
-    def _create_click_command(self, **kwargs) -> D:
+    def _create_click_command(self, **kwargs) -> _D:
         pass
 
 
