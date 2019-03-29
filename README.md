@@ -24,7 +24,7 @@ Options:
   --help  Show this message and exit.
 ```
 
-For additional customization, keyword arguments can be passed to the command annotation:
+For additional customization, keyword arguments can be passed to the command decorator:
 
 ```python
 @autoclick.command(
@@ -127,7 +127,7 @@ def foo_factory(bar: str, baz: int):
 
 ## Conditionals and Validations
 
-Conditionals and Validations are similar - they are both decorators that take **kwargs parameter. The keywords are parameter names and values are parameter values. When the function takes multiple parameters, they should specify the order; ordering depends on python 3.5+ behavior that dictionaries are ordered implicitly.
+Conditionals and Validations are similar - they are both decorators that take `**kwargs` parameter. The keywords are parameter names and values are parameter values. When the function takes multiple parameters, they should specify the order; ordering depends on python 3.5+ behavior that dictionaries are ordered implicitly.
 
 A conditional function is used to modify the values of one or more parameters conditional on the value(s) of other parameters. A conditional function may return a dict with keys being parameter names that should be updated, and values being the new parameter values.
 
@@ -135,7 +135,7 @@ A validation function is intended to check that one or more parameter values con
 
 Both conditional and validation functions can throw ValidationError.
 
-These functions can be associated with parameters in two ways. First, using the 'conditionals' and 'validations' arguments of the command decorator. These are dicts with a parameter name or tuple of parameter names being the key and the function being the value. Second, validation functions can be associated with parameters when they are decorated with `@autoclick.validation` and the parameter type matches the type argument of the validation decorator. Multi-parameter validations can only be associated via the first method. Since conditionals are expected to be multi-valued, there is no `@autoclick.conditional` annotation, i.e. they must always be explicitly specified.
+These functions can be associated with parameters in two ways. First, using the `conditionals` and `validations` arguments of the command decorator. These are dicts with a parameter name or tuple of parameter names being the key and the function being the value. Second, validation functions can be associated with parameters when they are decorated with `@autoclick.validation` and the parameter type matches the type argument of the validation decorator. Multi-parameter validations can only be associated via the first method. Since conditionals are expected to be multi-valued, there is no `@autoclick.conditional` annotation, i.e. they must always be explicitly specified.
 
 ### Type matching
 
