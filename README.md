@@ -248,4 +248,5 @@ The following sections describe details of how the arguments to click classes/fu
 
 ## Todo
 
+* Add ability to have documentation for positional arguments (see https://github.com/pallets/click/issues/587)
 * Look at incorporating features from contributed packages: https://github.com/click-contrib

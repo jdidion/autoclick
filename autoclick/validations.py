@@ -45,8 +45,9 @@ class Mutex:
 
     def __call__(self, **kwargs):
         args = list(kwargs.items())
+        groups = self.groups or range(len(args))
         defined = []
-        for group in self.groups:
+        for group in groups:
             if isinstance(group, int):
                 group = [group]
             for i in group:

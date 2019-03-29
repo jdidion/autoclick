@@ -6,17 +6,15 @@ import logging
 import re
 import typing
 from typing import (
-    Callable, Dict, Generic, List, Optional, Sequence, Set, Tuple, Type, TypeVar,
+    Any, Callable, Dict, Generic, List, Optional, Sequence, Set, Tuple, Type, TypeVar,
     Union, cast
 )
 
-from .types import OptionalTuple
+from autoclick.types import OptionalTuple
 
 import click
 import docparse
 
-import pkg_resources
-pkg_resources.get_distribution("autoclick")
 
 LOG = logging.getLogger("AutoClick")
 UNDERSCORES = re.compile("_")
@@ -70,6 +68,9 @@ add_composite_prefixes: By default, the parameter name is added as a prefix
     each composite type may only be used for at most one parameter, and the
     user must ensure that no composite parameter names conflict with each
     other or with other parameter names in the annotated function.
+default_values: Specify default values for parameters. The primary usage is 
+    to specify default values for hidden parameters of composite types. Otherwise, 
+    it is better to specify default values in the signature of the command function.
 command_help: Command description. By default, this is extracted from the
     funciton docstring.
 option_class: Class to use when creating :class:`click.Option`s.
@@ -359,6 +360,7 @@ class BaseDecorator(Generic[_D], metaclass=ABCMeta):
         self,
         param: ParameterInfo,
         used_short_names: Set[str],
+        default_values: Dict[str, Any],
         option_class: Type[click.Option],
         argument_class: Type[click.Argument],
         long_name_prefix: Optional[str] = None,
@@ -371,6 +373,7 @@ class BaseDecorator(Generic[_D], metaclass=ABCMeta):
             param: A :class:`ParameterInfo`.
             used_short_names: A set of short names that have been used by other
                 parameters and thus should not be re-used.
+            default_values:
             option_class: Class to instantiate for option parameters.
             argument_class: Class to instantiate for argument parameters.
             long_name_prefix: Prefix to add to long option names.
@@ -408,7 +411,7 @@ class BaseDecorator(Generic[_D], metaclass=ABCMeta):
                 param_decls,
                 type=None if param.is_flag else param.click_type,
                 required=not param.optional,
-                default=param.default,
+                default=default_values.get(param_name, param.default),
                 show_default=self._show_defaults,
                 nargs=param.nargs,
                 hidden=hidden or param_name in self._hidden,
@@ -420,7 +423,7 @@ class BaseDecorator(Generic[_D], metaclass=ABCMeta):
             return argument_class(
                 [long_name],
                 type=param.click_type,
-                default=param.default,
+                default=default_values.get(param_name, param.default),
                 nargs=-1 if param.nargs == 1 and param.multiple else param.nargs
             )
 
@@ -528,6 +531,7 @@ class Composite(BaseDecorator[_D], metaclass=ABCMeta):
         used_short_names: Set[str],
         add_prefixes: bool,
         hidden: bool,
+        default_values: Dict[str, Any],
         help_text: str,
         option_class: Type[click.Option],
         argument_class: Type[click.Argument],
@@ -541,6 +545,7 @@ class Composite(BaseDecorator[_D], metaclass=ABCMeta):
             used_short_names:
             add_prefixes:
             hidden:
+            default_values:
             help_text:
             option_class:
             argument_class:
@@ -564,9 +569,9 @@ class Composite(BaseDecorator[_D], metaclass=ABCMeta):
             types = []
             default = []
             for param_name in self._option_order:
-                param = self._parameters[param_name]
-                types.append(param.click_type)
-                default.append(param.default)
+                composite_param = self._parameters[param_name]
+                types.append(composite_param.click_type)
+                default.append(default_values.get(param_name, composite_param.default))
 
             click_parameters = [
                 option_class(
@@ -592,6 +597,7 @@ class Composite(BaseDecorator[_D], metaclass=ABCMeta):
                     argument_class=argument_class,
                     long_name_prefix=prefix,
                     hidden=hidden,
+                    default_values=default_values,
                     force_positionals_as_options=force_positionals_as_options
                 )
                 for opt in self._option_order
@@ -918,6 +924,7 @@ class BaseCommandDecorator(BaseDecorator[_D], metaclass=ABCMeta):
         argument_class: Type[click.Argument] = click.Argument,
         extra_click_kwargs: Optional[dict] = None,
         used_short_names: Optional[Set[str]] = None,
+        default_values: Optional[Dict[str, Any]] = None,
         pass_context: Optional[bool] = None,
         **kwargs
     ):
@@ -934,6 +941,7 @@ class BaseCommandDecorator(BaseDecorator[_D], metaclass=ABCMeta):
         self._used_short_names = set()
         if used_short_names:
             self._used_short_names.update(used_short_names)
+        self._default_values = default_values or {}
         self._pass_context = GLOBAL_CONFIG.get("pass_context", pass_context)
         self._allow_extra_arguments = False
         self._allow_extra_kwargs = False
@@ -983,6 +991,7 @@ class BaseCommandDecorator(BaseDecorator[_D], metaclass=ABCMeta):
                 click_parameters, callback = composite.create_click_parameters(
                     param=param,
                     used_short_names=self._used_short_names,
+                    default_values=self._default_values,
                     add_prefixes=self._add_composite_prefixes,
                     hidden=param.name in self._hidden,
                     option_class=self._option_class,
@@ -996,6 +1005,7 @@ class BaseCommandDecorator(BaseDecorator[_D], metaclass=ABCMeta):
                 command_params.append(self._create_click_parameter(
                     param=param,
                     used_short_names=self._used_short_names,
+                    default_values=self._default_values,
                     option_class=self._option_class,
                     argument_class=self._argument_class
                 ))

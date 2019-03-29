@@ -15,6 +15,7 @@ WritableDir = NewType("WritableDir", pathlib.Path)
 
 class OptionalTuple(click.types.Tuple):
     def __init__(self, types):
+        super().__init__([])
         self.types = types
 
     def __call__(self, value, param=None, ctx=None):

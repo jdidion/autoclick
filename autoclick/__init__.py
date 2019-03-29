@@ -1,3 +1,5 @@
+import logging
+from pkg_resources import iter_entry_points
 import typing
 
 from autoclick.core import (
@@ -9,6 +11,7 @@ from autoclick.types import *
 from autoclick.validations import *
 
 
+LOG = logging.getLogger("AutoClick")
 T = typing.TypeVar("T")
 
 
@@ -35,3 +38,9 @@ def set_global(name: str, value: T) -> typing.Optional[T]:
     if prev != value:
         core.GLOBAL_CONFIG[name] = value
     return prev
+
+
+# Load modules for validation and composite plugins
+for entry_point in iter_entry_points(group='autoclick'):
+    LOG.debug("Loading plugin entry-point %s", str(entry_point))
+    entry_point.load()
