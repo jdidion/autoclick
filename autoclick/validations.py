@@ -1,7 +1,7 @@
 from enum import Enum
 import operator
 import os
-from typing import Callable, Tuple, Union
+from typing import Sequence, Union
 
 from autoclick.core import ValidationError, validation
 from autoclick.types import *
@@ -59,6 +59,33 @@ class Mutex:
             raise ValidationError(
                 f"Values specified for > {self.max_defined} mutually exclusive groups: "
                 f"{group_str}"
+            )
+
+
+class SequenceLength:
+    """
+    Validate that the length of a sequence is within certain bounds.
+
+    Args:
+        *lengths: either a single value, which specifies the exact length a sequence
+            must have, or a min and max value.
+    """
+    def __init__(self, *lengths):
+        if len(lengths) == 1:
+            self.minlen = self.maxlen = lengths[0]
+        else:
+            self.minlen, self.maxlen = lengths
+        if self.minlen > self.maxlen:
+            raise ValueError("'minlen' must be <= 'maxlen'")
+
+    def __call__(self, param_name: str, value: Sequence):
+        if len(value) < self.minlen:
+            raise ValidationError(
+                f"Parameter {param_name} must have at least {self.minlen} elements."
+            )
+        if len(value) < self.maxlen:
+            raise ValidationError(
+                f"Parameter {param_name} can have at most {self.maxlen} elements."
             )
 
 
