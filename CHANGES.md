@@ -1,6 +1,11 @@
 # AutoClick Changes
 
-## 0.2.4 (Unpublished)
+## 0.4.0 (2019.04.09)
+
+* Add additional types (DelimitedList) and validations (SequenceLength)
+* Add decorator for conversions that can be automatically applied based on the parameter type
+
+## 0.3.0 (2019.03.29)
 
 * Handle tuple types for which the desired default value is `None` (rather than a sequence of `None`s)
 * Make ValidationError inherit from UsageError

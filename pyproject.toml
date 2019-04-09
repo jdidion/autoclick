@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "autoclick"
-version = "0.2.4"
+version = "0.4.0"
 description = "Auto-generate Click-based CLIs from python3 type annotations."
 license = "MIT"
 authors = ["John Didion <github@didion.net>"]
