@@ -10,7 +10,7 @@ from typing import (
     Union, cast
 )
 
-from autoclick.types import OptionalTuple
+from autoclick.types import OptionalTuple, autoconvert
 
 import click
 import docparse
@@ -233,7 +233,7 @@ class ParameterInfo:
             if self.match_type in CONVERSIONS:
                 self.click_type = CONVERSIONS[self.match_type]
             else:
-                self.click_type = self.anno_type
+                self.click_type = autoconvert(self.match_type) or self.anno_type
 
         self.is_flag = (
             self.click_type == bool or

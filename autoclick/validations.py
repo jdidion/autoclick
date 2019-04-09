@@ -1,4 +1,3 @@
-from enum import Enum
 import operator
 import os
 from typing import Sequence, Union
