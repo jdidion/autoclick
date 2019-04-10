@@ -2,6 +2,7 @@
 
 ## 0.5.0 (Unpublished)
 
+* Breaking change: Major refactoring to split up core.py and make import graph acyclic
 * Add defaults for validations.Defined
 * Breaking change: Rename validations.ge_defined to validations.defined_ge
 
