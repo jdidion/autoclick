@@ -248,5 +248,6 @@ The following sections describe details of how the arguments to click classes/fu
 
 ## Todo
 
-* Add ability to have documentation for positional arguments (see https://github.com/pallets/click/issues/587)
+* Documentation for positional arguments (see https://github.com/pallets/click/issues/587)
+* Handle return values (e.g. if a int, treat as a return code; if a dict, convert to JSON and write to stdout, etc)
 * Look at incorporating features from contributed packages: https://github.com/click-contrib

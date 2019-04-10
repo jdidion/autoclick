@@ -1,5 +1,10 @@
 # AutoClick Changes
 
+## 0.5.0 (Unpublished)
+
+* Add defaults for validations.Defined
+* Breaking change: Rename validations.ge_defined to validations.defined_ge
+
 ## 0.4.0 (2019.04.09)
 
 * Add additional types (DelimitedList) and validations (SequenceLength)

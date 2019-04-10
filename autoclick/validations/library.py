@@ -1,9 +1,18 @@
+from enum import Enum
 import operator
 import os
-from typing import Sequence, Union
+import pathlib
+from typing import Callable, Sequence, Tuple, Union
 
-from autoclick.core import ValidationError, validation
-from autoclick.types import *
+from autoclick.types.library import (
+    ReadablePath,
+    ReadableFile,
+    ReadableDir,
+    WritablePath,
+    WritableFile,
+    WritableDir
+)
+from autoclick.validations import ValidationError, validation
 
 
 class Comparison(Enum):
@@ -20,7 +29,14 @@ class Comparison(Enum):
 
 
 class Defined:
-    def __init__(self, n: int, cmp: Comparison):
+    """
+    Validate that some number of paramters are defined.
+
+    Args:
+        n: Number to compare against the number of defined parameters.
+        cmp: Comparison.
+    """
+    def __init__(self, n: int = 1, cmp: Comparison = Comparison.GE):
         self.n = n
         self.cmp = cmp
 
@@ -33,7 +49,7 @@ class Defined:
             )
 
 
-def ge_defined(n: int):
+def defined_ge(n: int):
     return Defined(n, Comparison.GE)
 
 

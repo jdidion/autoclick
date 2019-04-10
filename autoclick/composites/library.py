@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 from typing import Optional
 
-from autoclick.core import composite_factory
+from autoclick.composites import composite_factory
 
 
 @composite_factory(hidden=["log_name"])
