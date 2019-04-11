@@ -92,24 +92,30 @@ def has_conversion(type_: Type) -> bool:
     return type_ in CONVERSIONS
 
 
-def get_conversion(type_: Type, default: Type):
+def get_conversion(match_type: Type, true_type: Optional[Type] = None) -> Callable:
     """
+    Gets a conversion function for the given type, if one is available.
 
     Args:
-        type_:
-        default:
+        match_type: Type to match against.
+        true_type: Type to auto-convert, if `match_type` does not match any
+            registered conversions.
 
     Returns:
-
+        A Callable - generally either a click.ParamType (if a conversion was found) or
+        `true_type`.
     """
-    if type_ in CONVERSIONS:
-        return CONVERSIONS[type_]
+    if match_type in CONVERSIONS:
+        return CONVERSIONS[match_type]
+
+    if true_type is None:
+        true_type = match_type
 
     for filter_fn, conversion_fn in AUTOCONVERSIONS:
-        if filter_fn(type_):
-            return conversion_fn(type_)
+        if filter_fn(true_type):
+            return conversion_fn(true_type)
 
-    return default
+    return true_type
 
 
 def autoconversion(

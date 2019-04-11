@@ -7,7 +7,7 @@ repo = jdidion/$(module)
 desc = Release $(version)
 
 BUILD = poetry build && pip install --upgrade dist/$(module)-$(version)-py3-none-any.whl $(installargs)
-TEST  = pytest -vv --show-capture=all --cov --cov-report term-missing $(pytestopts) $(tests)
+TEST  = pytest -s -vv --show-capture=all --cov --cov-report term-missing $(pytestopts) $(tests)
 
 all:
 	$(BUILD)
