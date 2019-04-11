@@ -1,6 +1,6 @@
 import pkg_resources
 
-from autoclick.utils import LOG
+from autoclick.utils import LOG, set_global
 from autoclick.commands import command, group
 from autoclick.core import SignatureError, ParameterCollisionError
 from autoclick.composites import (
