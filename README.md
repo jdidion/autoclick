@@ -27,6 +27,8 @@ Options:
 For additional customization, keyword arguments can be passed to the command decorator:
 
 ```python
+import autoclick
+
 @autoclick.command(
     short_names={
         "greeting": "G",
@@ -55,25 +57,28 @@ In Click, type conversion can be done either in a callback or by using a callabl
 1. Automatic conversion functions. A conversion function is decorated by `@conversion`. The conversion decorator by default infers the type being converted to from the return annotation. Otherwise, the destination type can be specified as an argument to the decorator. The decorator registers the function as the converter for the specified type. When that type is encountered as an annotation of a parameter to a command function, the converter function is used to convert the string argument to that type.
 
 ```python
+import autoclick
+
 class Bork:
-    def __init__(self, n: str):
+    def __init__(self, n: int):
         self.n = n
 
     def __str__(self):
         print(",".join(["bork"] * self.n))
 
 @autoclick.conversion()
-def bork(n: str) -> Bork:
+def bork(n: int) -> Bork:
     return Bork(n)
 
 @autoclick.command("bork")
-def main(bork: Bork):
-    print(bork)
+def main(b: Bork):
+    print(b)
 ```
 
 In the case where there needs to be specialized handling of common types, new types can be created using `typing.NewType`:
 
 ```python
+import autoclick
 import typing
 
 DoubleInt = typing.NewType("DoubleInt", int)
@@ -90,6 +95,8 @@ def main(i1: int, i2: DoubleInt):
 2. Conversion functions can also be specified explicitly in the command decorator:
 
 ```python
+import autoclick
+
 @autoclick.command(
     types={
         "a": double_int
@@ -104,9 +111,10 @@ Note that any of the types in the `click.Types` package can also be used in this
 3. For composite types, the `autoclick.composite_type` and `autoclick.composite_factory` functions can be used. An example of a composite type is a class that requires more than one parameter to its constructor. For composite types, the same annotation-based CLI creation is performed, and the parameters are injected into the CLI in place of the composite parameter.
 
 ```python
+import autoclick
 @autoclick.composite_type()
 class Foo:
-    def __init__(bar: str, baz: int):
+    def __init__(self, bar: str, baz: int):
         self.bar = bar
         self.baz = baz
 
@@ -120,6 +128,12 @@ In this case, the options to main would be `--foo-bar` and `--foo-baz`. Once the
 A `autoclick.composite_factory` function returns a complex type. For example, the code below is equivalent to the code above:
 
 ```python
+import autoclick
+
+class Foo:
+    def __init__(self, bar: str, baz: int):
+        ...
+
 @autoclick.composite_factory(Foo)
 def foo_factory(bar: str, baz: int):
     return Foo(bar, baz)
@@ -142,14 +156,17 @@ These functions can be associated with parameters in two ways. First, using the 
 You can also use distinct types created by the `typing.NewType` function for type matching validations. For example, if you want to define a parameter that must be positive and even:
 
 ```python
+import autoclick
+from typing import NewType
+
 PositiveEven = NewType('PositiveEven', int)
 
 @autoclick.validation(PositiveEven)
 def validate_positive_even(arg: int):
-  if i < 0:
-    raise ValidationError()
-  if i % 2 != 0:
-    raise ValidationError()
+  if arg < 0:
+    raise autoclick.ValidationError()
+  if arg % 2 != 0:
+    raise autoclick.ValidationError()
 ```
 
 Note that the typing library does not currently provide an intersection type. Thus, Positive, Even, and PositiveEven must all be distinct validations. There are two ways to simplify:
@@ -157,9 +174,11 @@ Note that the typing library does not currently provide an intersection type. Th
 1. Add the parameter to the validation dict of the command decorator with a tuple of mutliple functions as the value:
 
 ```python
+import autoclick
+
 @autoclick.command(
     validations={
-        "a": (positive, even)
+        "a": positive, even
     }
 )
 ```
@@ -167,6 +186,8 @@ Note that the typing library does not currently provide an intersection type. Th
 2. Create a composite validation:
 
 ```python
+import autoclick
+
 @autoclick.validation(PositiveEven, (positive, even))
 def validate_positive_even(arg: int):
   pass
@@ -175,6 +196,7 @@ def validate_positive_even(arg: int):
 or even
 
 ```python
+import autoclick
 autoclick.validation(PositiveEven, (positive, even))
 ```
 
@@ -184,6 +206,8 @@ AutoClick uses the [docparse](https://github.com/jdidion/docparse) library to pa
 
 ```python
 # test.py
+import autoclick
+
 @autoclick.command(show_defaults=True)
 def main(x: str = "hello"):
     """Print a string
@@ -206,6 +230,45 @@ Usage: test.py [OPTIONS] [X]
 Options:
   -x, --x TEXT  The string to print.  [default: hello]
   --help        Show this message and exit.
+```
+
+## Groups
+
+AutoClick CLIs can have multiple subcommands, by creating command groups:
+
+```python
+from autoclick import group
+
+@group("myprog")
+def myprog():
+    pass
+
+@myprog.command("hi")
+def say_hi(name: str):
+    print(f"hello {name}")
+    
+@myprog.command("bye")
+def say_bye(name: str):
+    print(f"byebye {name}")
+```
+
+AutoClick provides alternative group types. For example, `DefaultAutoClickGroup` can take a default command name to run when a command is not specified:
+
+```python
+from autoclick import group
+from autoclick.commands import DefaultAutoClickGroup
+
+@group(
+    "myprog",
+    group_class=DefaultAutoClickGroup,
+    default="hello"
+)
+def myprog():
+    pass
+
+# This command is run by default if the command name is not specified
+def hello(name: str):
+    print(f"hi {name}")
 ```
 
 ## Installation
@@ -248,6 +311,6 @@ The following sections describe details of how the arguments to click classes/fu
 
 ## Todo
 
-* Documentation for positional arguments (see https://github.com/pallets/click/issues/587)
+* Documentation for positional arguments (see [](https://github.com/pallets/click/issues/587))
 * Handle return values (e.g. if a int, treat as a return code; if a dict, convert to JSON and write to stdout, etc)
-* Look at incorporating features from contributed packages: https://github.com/click-contrib
+* Look at incorporating features from contributed packages: [](https://github.com/click-contrib)

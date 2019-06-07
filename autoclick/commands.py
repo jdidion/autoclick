@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, Optional, Sequence, Set, Type, cast
+from typing import Any, Callable, Dict, Optional, Sequence, Set, Type, Union, cast
 
 import click
 
@@ -232,6 +232,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         extra_click_kwargs: Optional[dict] = None,
         used_short_names: Optional[Set[str]] = None,
         default_values: Optional[Dict[str, Any]] = None,
+        version: Optional[Union[str, bool]] = None,
         pass_context: Optional[bool] = None,
         **kwargs
     ):
@@ -252,6 +253,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         self._pass_context = get_global("pass_context", pass_context)
         self._allow_extra_arguments = False
         self._allow_extra_kwargs = False
+        self._add_version_option = version
 
     @property
     def name(self) -> str:
@@ -272,6 +274,8 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         command_params = []
         composite_callbacks = []
 
+        if self._add_version_option:
+            command_params.append()
         if self._pass_context:
             ctx_param = list(parameter_infos.keys())[0]
             if parameter_infos[ctx_param].anno_type in {click.Context, EMPTY, None}:
@@ -403,6 +407,8 @@ class command(BaseCommandDecorator[click.Command]):
             help text.
         param_help: Dict mapping parameters to help strings. By default, these are
             extracted from the function docstring.
+        pass_context: Whether to pass in the click.Context as the first argument
+            to the function.
     """
     def __init__(
         self,
@@ -475,6 +481,8 @@ class group(BaseCommandDecorator[click.Group]):
             help text.
         param_help: Dict mapping parameters to help strings. By default, these are
             extracted from the function docstring.
+        pass_context: Whether to pass in the click.Context as the first argument
+            to the function.
     """
     def __init__(
         self,

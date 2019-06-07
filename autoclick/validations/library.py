@@ -45,7 +45,7 @@ class Defined:
         if not self.cmp.fn(defined, self.n):
             raise ValidationError(
                 f"Of the following parameters, the number defined must be " 
-                f"{self.cmp.symbol} {self.n}: {','.join(kwargs.keys())}"
+                f"{self.cmp.symbol} {self.n}: {', '.join(kwargs.keys())}"
             )
 
 

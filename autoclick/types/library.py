@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum, EnumMeta
+from numbers import Number
 import pathlib
 import re
 from typing import (
@@ -158,7 +159,7 @@ class EnumChoice(Generic[E], BaseType):
             instances.
         xform: How to transform string values before passing to callable;
             upper = convert to upper case; lower = convert to lower case;
-            None = don"t convert. (default = upper)
+            None = don't convert. (default = upper)
     """
     name = "choice"
 
@@ -177,7 +178,10 @@ class EnumChoice(Generic[E], BaseType):
             self.xform = lambda s: s
 
     def convert(self, value, param, ctx) -> E:
-        return self.enum_class[self.choice.convert(self.xform(value), param, ctx)]
+        if isinstance(value, str):
+            return self.enum_class[self.choice.convert(self.xform(value), param, ctx)]
+        else:
+            return cast(E, value)
 
     def get_missing_message(self, param):
         return self.choice.get_missing_message(param)
@@ -204,3 +208,73 @@ class Mapping(BaseType):
 
     def convert(self, value, param, ctx) -> Dict[K, V]:
         return dict(item.split("=") for item in value)
+
+
+N = TypeVar('N', bound=Number)
+
+
+class BaseNumericType(Generic[N], BaseType):
+    def __init__(
+        self,
+        datatype: Callable[..., Optional[N]],
+        name: str = None,
+        metavar: str = None
+    ):
+        self.datatype = datatype
+        type_name = datatype.__name__.upper()
+        self.name = name or self._get_default_name(type_name)
+        super().__init__(metavar=metavar or type_name)
+
+    def _get_default_name(self, type_name: str) -> str:
+        pass
+
+    def convert(self, value, param, ctx) -> Optional[N]:
+        try:
+            return self.datatype(value)
+        except (ValueError, UnicodeError):
+            self.fail(f'{value} is not a valid {self.datatype}', param, ctx)
+
+
+class Positive(Generic[N], BaseNumericType[N]):
+    def _get_default_name(self, type_name: str) -> str:
+        return f'POSITIVE_{type_name}'
+
+    def convert(self, value, param, ctx) -> Optional[N]:
+        value = super().convert(value, param, ctx)
+        if value is not None and value < self.datatype(0):
+            self.fail(f'{self.datatype} value must be >= 0', param, ctx)
+        return value
+
+
+class Range(Generic[N], BaseNumericType[N]):
+    def __init__(
+        self,
+        datatype: Callable[..., Optional[N]],
+        min_value=None,
+        max_value=None,
+        **kwargs
+    ):
+        self.min_value = min_value
+        self.max_value = max_value
+        if datatype is None:
+            datatype = type(min_value)
+        super().__init__(datatype, **kwargs)
+
+    def _get_default_name(self, type_name: str) -> str:
+        return f'RANGE_{self.datatype}'
+
+    def convert(self, value, param, ctx) -> Optional[N]:
+        value = super().convert(value, param, ctx)
+
+        failures = []
+
+        if self.min_value is not None and value < self.min_value:
+            failures.append(f'must be >= {self.min_value}')
+
+        if self.max_value is not None and value > self.max_value:
+            failures.append(f'must be <= {self.max_value}')
+
+        if failures:
+            self.fail(f'{value}' + ' and '.join(failures))
+
+        return value
