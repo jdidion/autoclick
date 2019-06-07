@@ -1,6 +1,6 @@
 # AutoClick Changes
 
-## 0.6.0 (Unpublished)
+## 0.6.0 (2019.06.07)
 
 * Add additional types
 * Add version option
