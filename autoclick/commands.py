@@ -274,8 +274,10 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         command_params = []
         composite_callbacks = []
 
-        if self._add_version_option:
-            command_params.append()
+        # TODO
+        # if self._add_version_option:
+        #     command_params.append()
+
         if self._pass_context:
             ctx_param = list(parameter_infos.keys())[0]
             if parameter_infos[ctx_param].anno_type in {click.Context, EMPTY, None}:

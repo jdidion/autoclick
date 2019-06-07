@@ -1,9 +1,10 @@
 # AutoClick Changes
 
-
 ## 0.6.0 (Unpublished)
 
 * Add additional types
+* Add version option
+* EnumChoice: don't try to convert if the value is already an enum
 
 ## 0.5.1 (2019.04.11)
 
