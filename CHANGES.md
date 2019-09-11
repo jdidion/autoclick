@@ -1,6 +1,16 @@
 # AutoClick Changes
 
-## 0.5.0 (Unpublished)
+## 0.6.0 (2019.06.07)
+
+* Add additional types
+* Add version option
+* EnumChoice: don't try to convert if the value is already an enum
+
+## 0.5.1 (2019.04.11)
+
+* Fix bug in get_conversion in which wrong type was being used to look up automatic conversion function
+
+## 0.5.0 (2019.04.10)
 
 * Breaking change: Major refactoring to split up core.py and make import graph acyclic
 * Add defaults for validations.Defined

@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Tuple, Type
+from typing import Callable, Collection, Dict, Optional, Tuple, Type
 
 import click
 
@@ -114,6 +114,9 @@ def get_conversion(match_type: Type, true_type: Optional[Type] = None) -> Callab
     for filter_fn, conversion_fn in AUTOCONVERSIONS:
         if filter_fn(true_type):
             return conversion_fn(true_type)
+
+    if issubclass(true_type, Collection):
+        return match_type
 
     return true_type
 
