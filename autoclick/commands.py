@@ -233,6 +233,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         used_short_names: Optional[Set[str]] = None,
         default_values: Optional[Dict[str, Any]] = None,
         version: Optional[Union[str, bool]] = None,
+        describe: Union[bool, str] = True,
         pass_context: Optional[bool] = None,
         **kwargs
     ):
@@ -254,6 +255,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         self._allow_extra_arguments = False
         self._allow_extra_kwargs = False
         self._add_version_option = version
+        self._add_describe_option = describe
 
     @property
     def name(self) -> str:
@@ -409,6 +411,9 @@ class command(BaseCommandDecorator[click.Command]):
             help text.
         param_help: Dict mapping parameters to help strings. By default, these are
             extracted from the function docstring.
+        describe: Whether to add a `--describe` option that will generate a description
+            of the command and its parameters in a JSON format. Can be a string
+            specifying the name of the option to use (instead of "describe").
         pass_context: Whether to pass in the click.Context as the first argument
             to the function.
     """
@@ -483,6 +488,9 @@ class group(BaseCommandDecorator[click.Group]):
             help text.
         param_help: Dict mapping parameters to help strings. By default, these are
             extracted from the function docstring.
+        describe: Whether to add a `--describe` option that will generate a description
+            of the command and its parameters in a JSON format. Can be a string
+            specifying the name of the option to use (instead of "describe").
         pass_context: Whether to pass in the click.Context as the first argument
             to the function.
     """

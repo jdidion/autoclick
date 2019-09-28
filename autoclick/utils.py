@@ -1,6 +1,10 @@
 import inspect
 import logging
+from pathlib import Path
+import sys
 from typing import Callable, Optional, Type, TypeVar
+
+import click
 
 
 LOG = logging.getLogger("AutoClick")
@@ -59,3 +63,66 @@ def get_dest_type(f: Callable) -> Type:
     if dest_type in EMPTY_OR_NONE:
         raise ValueError(f"Function {f} must have a non-None return annotation")
     return dest_type
+
+
+def get_module():
+    if hasattr(sys, "_getframe"):
+        return sys._getframe(1).f_globals.get("__name__")
+    else:
+        raise RuntimeError("Could not determine module")
+
+
+def get_version(module) -> str:
+    # Try pkg_resources
+    try:
+        import pkg_resources
+    except ImportError:
+        pass
+    else:
+        try:
+            # Try get_distribution
+            return pkg_resources.get_distribution(module).version
+        except:
+            # Fall back to looking for entry point
+            for dist in pkg_resources.working_set:
+                scripts = dist.get_entry_map().get("console_scripts") or {}
+                for script_name, entry_point in scripts.items():
+                    if entry_point.module_name == module:
+                        return dist.version
+
+    # Try pyproject.toml
+    try:
+        toml_mod = get_toml_parser()
+    except ImportError:
+        pass
+    else:
+        path = Path.cwd()
+        while path:
+            pyproj = path / "pyproject.toml"
+            if pyproj.exists():
+                with open(pyproj, "rt") as inp:
+                    toml = toml_mod.parse(inp.read())
+                    return toml["tool"]["poetry"]["version"].as_string()
+            else:
+                path = path.parent
+
+    raise RuntimeError("Could not determine version")
+
+
+def get_toml_parser():
+    try:
+        import tomlkit
+        return tomlkit
+    except ImportError:
+        pass
+
+    import toml
+    return toml
+
+
+def serialize_command(command: click.Command) -> dict:
+    desc = {
+
+    }
+
+    return desc

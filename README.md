@@ -267,6 +267,7 @@ def myprog():
     pass
 
 # This command is run by default if the command name is not specified
+@myprog.command()
 def hello(name: str):
     print(f"hi {name}")
 ```
@@ -311,6 +312,7 @@ The following sections describe details of how the arguments to click classes/fu
 
 ## Todo
 
-* Documentation for positional arguments (see [](https://github.com/pallets/click/issues/587))
+* Documentation for positional arguments (see [here](https://github.com/pallets/click/issues/587))
 * Handle return values (e.g. if a int, treat as a return code; if a dict, convert to JSON and write to stdout, etc)
-* Look at incorporating features from contributed packages: [](https://github.com/click-contrib)
+* Look at incorporating features from contributed packages: [click-contrib](https://github.com/click-contrib)
+* Provide option to automatically generate a structured description of the command (e.g. in JSON)
