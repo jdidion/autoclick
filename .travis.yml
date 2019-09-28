@@ -1,0 +1,18 @@
+sudo: false
+dist: bionic
+language: python
+cache:
+  directories:
+  - "$HOME/.cache/pip"
+python:
+- '3.6'
+- '3.7'
+before_install:
+- pip install --upgrade pip wheel
+- pip install poetry
+install:
+- make install
+script:
+- make test
+after_success:
+- bash <(curl -s https://codecov.io/bash)

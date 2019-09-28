@@ -1,40 +1,53 @@
+package = autoclick
+repo = jdidion/$(package)
+version = 0.6.1
 tests = tests
-module = autoclick
-version = 0.6.0
-#pytestops = "--full-trace"
-#pytestops = "-v -s"
-repo = jdidion/$(module)
+pytestopts = -s -vv --show-capture=all
 desc = Release $(version)
 
-BUILD = poetry build && pip install --upgrade dist/$(module)-$(version)-py3-none-any.whl $(installargs)
-TEST  = pytest -s -vv --show-capture=all --cov --cov-report term-missing $(pytestopts) $(tests)
+all: clean install test
 
-all:
-	$(BUILD)
-	$(TEST)
+build_cgranges:
+	cd cgranges \
+	&& python setup.py build_ext -i \
+	&& python setup.py bdist_wheel
 
-install:
-	$(BUILD)
+install_cgranges: build_cgranges
+	pip install --upgrade cgranges/dist/cgranges*.whl
+
+build: clean
+	poetry build
+
+lock:
+	poetry lock
+
+install: build
+	pip install --upgrade dist/$(package)-$(version)-*.whl $(installargs)
 
 test:
-	$(TEST)
+	coverage run -m pytest $(pytestopts) $(tests)
+	coverage report -m
+	coverage xml
 
 docs:
 	make -C docs api
 	make -C docs html
 
 lint:
-	pylint $(module)
+	flake8 $(package)
+
+reformat:
+	black $(package)
+	black $(tests)
 
 clean:
 	rm -Rf __pycache__
 	rm -Rf **/__pycache__/*
-	rm -Rf **/*.c
 	rm -Rf **/*.so
 	rm -Rf **/*.pyc
 	rm -Rf dist
 	rm -Rf build
-	rm -Rf $(module).egg-info
+	rm -Rf $(package).egg-info
 
 docker:
 	# build
@@ -42,23 +55,29 @@ docker:
 	# add alternate tags
 	docker tag $(repo):$(version) $(repo):latest
 	# push to Docker Hub
-	docker login -u jdidion && \
+	# requires user to be logged in to account with
+	# permissions to push to $(repo)
 	docker push $(repo)
 
-release:
-	$(clean)
-	# tag
+tag:
 	git tag $(version)
-	# build
-	$(BUILD)
-	$(TEST)
-	# release
-	poetry publish
-	git push origin --tags
-	$(github_release)
-	# $(docker)
 
-github_release:
+push_tag:
+	git push origin --tags
+
+del_tag:
+	git tag -d $(version)
+
+set_version:
+	poetry version $(dunamai from git --no-metadata --style semver)
+
+pypi_release:
+	poetry publish
+
+release: clean tag
+	${MAKE} install test pypi_release push_tag || (${MAKE} del_tag set_version && exit 1)
+
+	# create release in GitHub
 	curl -v -i -X POST \
 		-H "Content-Type:application/json" \
 		-H "Authorization: token $(token)" \

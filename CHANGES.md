@@ -1,5 +1,9 @@
 # AutoClick Changes
 
+## 0.6.1 (2019.09.29)
+
+* Fix error due to difference between python 3.6 and 3.7
+
 ## 0.6.0 (2019.06.07)
 
 * Add additional types
