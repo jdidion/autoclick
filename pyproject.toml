@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "autoclick"
-version = "0.6.0"
+version = "0.6.1"
 description = "Auto-generate Click-based CLIs from python3 type annotations."
 license = "MIT"
 authors = ["John Didion <github@didion.net>"]
@@ -17,7 +17,7 @@ docparse = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
-pytest-cov = "^2.4"
+coverage = "^2.4"
 
 [tool.poetry.plugins."autoclick"]
 "composites" = "autoclick.composites"

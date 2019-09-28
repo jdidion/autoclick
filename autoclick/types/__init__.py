@@ -29,7 +29,8 @@ class ParamTypeAdapter(click.ParamType):
 def conversion(
     dest_type: Optional[Type] = None,
     depends: Optional[Tuple[Callable, ...]] = None,
-    decorated: Optional[Callable] = None
+    decorated: Optional[Callable] = None,
+    name: Optional[str] = None
 ) -> Callable:
     """Annotates a conversion function.
 
@@ -41,12 +42,15 @@ def conversion(
             to the next. The type of the parameter to the conversion function
             must be the return type of the last dependency.
         decorated: The function to decorate.
+        name: Type name; defaults to the `name` attribute of `dest_type`.
 
     Returns:
         A decorator function.
     """
     def decorator(f: Callable) -> Callable:
+        _name = name
         _dest_type = dest_type
+
         if _dest_type is None:
             _dest_type = get_dest_type(f)
 
@@ -60,7 +64,18 @@ def conversion(
         else:
             target = f
 
-        click_type = ParamTypeAdapter(_dest_type.__name__, target)
+        if _name is None:
+            if hasattr(_dest_type, "__name__"):
+                _name = _dest_type.__name__
+            elif hasattr(_dest_type, "_name"):
+                _name = _dest_type._name
+            else:
+                raise ValueError(
+                    f"Name cannot be determined from {_dest_type}; the 'name' "
+                    f"argument must be provided."
+                )
+
+        click_type = ParamTypeAdapter(_name, target)
         register_conversion(_dest_type, click_type)
         return target
 
