@@ -1,4 +1,4 @@
-from typing import Callable, Collection, Dict, List, Optional, Tuple, Type, Union
+from typing import Callable, Collection, Dict, List, Optional, Tuple, Type, Union, cast
 
 import click
 
@@ -151,7 +151,8 @@ def register_autoconversion(
     pass_type: bool = True
 ):
     if isinstance(filter_fn, type):
-        filter_fn = lambda type_: issubclass(type_, filter_fn)
+        filter_type = cast(type, filter_fn)
+        filter_fn = lambda type_: issubclass(type_, filter_type)
     AUTOCONVERSIONS.append((filter_fn, conversion_fn, pass_type))
 
 
