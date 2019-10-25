@@ -5,6 +5,7 @@
 * Remove support for *args and **kwargs (these never worked properly anyway)
 * Add support for aggregate types
 * Implement auto-conversion for dict types
+* Enable type conversions to be used generically - conversions with type parameters can optionally match the generic type
 
 ## 0.6.1 (2019.09.29)
 
