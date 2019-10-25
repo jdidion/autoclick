@@ -150,7 +150,7 @@ class Parse(RegExp):
 E = TypeVar("E", bound=EnumMeta)
 
 
-@autoconversion(lambda type_: issubclass(type_, Enum))
+@autoconversion(Enum)
 class EnumChoice(Generic[E], BaseType):
     """Translates string values into enum instances.
 
@@ -194,20 +194,25 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-@autoconversion(lambda type_: issubclass(type_, dict))
+@autoconversion(dict, pass_type=False)
 class Mapping(BaseType):
     """
-    Todo: support conversion of key and value types. Need to expose core.CONVERSIONS.
     """
     name = "mapping"
 
     def __init__(
-        self, key_type: Type[K], value_type: Type[V], metavar: Optional[str] = None
+        self, kv_types: Tuple[Type[K], Type[V]], metavar: Optional[str] = None
     ):
         super().__init__(metavar)
+        self.kv_types = kv_types
 
     def convert(self, value, param, ctx) -> Dict[K, V]:
-        return dict(item.split("=") for item in value)
+        # Todo: support conversion of key and value types. Need to expose
+        #   core.CONVERSIONS.
+        def convert(k, v):
+            return self.kv_types[0](k), self.kv_types[1](v)
+
+        return dict(convert(*item.split("=")) for item in value)
 
 
 N = TypeVar('N', bound=Number)
