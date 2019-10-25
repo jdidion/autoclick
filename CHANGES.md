@@ -1,5 +1,11 @@
 # AutoClick Changes
 
+## 0.7.0 (2019.10.25)
+
+* Remove support for *args and **kwargs (these never worked properly anyway)
+* Add support for aggregate types
+* Implement auto-conversion for dict types
+
 ## 0.6.1 (2019.09.29)
 
 * Fix error due to difference between python 3.6 and 3.7
