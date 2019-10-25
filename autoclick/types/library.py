@@ -22,7 +22,7 @@ from typing import (
 
 import click
 
-from autoclick.types import DEFAULT_METAVAR, autoconversion
+from autoclick.types import DEFAULT_METAVAR, AggregateTypeMixin, autoconversion
 
 
 T = TypeVar("T")
@@ -150,7 +150,7 @@ class Parse(RegExp):
 E = TypeVar("E", bound=EnumMeta)
 
 
-@autoconversion(lambda type_: issubclass(type_, Enum))
+@autoconversion(Enum)
 class EnumChoice(Generic[E], BaseType):
     """Translates string values into enum instances.
 
@@ -194,20 +194,26 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-@autoconversion(lambda type_: issubclass(type_, dict))
-class Mapping(BaseType):
+@autoconversion(dict, pass_type=False)
+class Mapping(BaseType, AggregateTypeMixin):
     """
-    Todo: support conversion of key and value types. Need to expose core.CONVERSIONS.
     """
     name = "mapping"
 
     def __init__(
-        self, key_type: Type[K], value_type: Type[V], metavar: Optional[str] = None
+        self, kv_types: Tuple[Type[K], Type[V]], metavar: Optional[str] = None
     ):
         super().__init__(metavar)
+        self.kv_types = kv_types
 
-    def convert(self, value, param, ctx) -> Dict[K, V]:
-        return dict(item.split("=") for item in value)
+    def convert(self, value, param, ctx) -> Tuple[K, V]:
+        # Todo: support conversion of key and value types. Need to expose
+        #   core.CONVERSIONS.
+        k, v = value.split("=")
+        return self.kv_types[0](k), self.kv_types[1](v)
+
+    def aggregate(self, values: Iterable[Tuple[K, V]]) -> Dict[K, V]:
+        return dict(values)
 
 
 N = TypeVar('N', bound=Number)

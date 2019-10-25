@@ -2,7 +2,7 @@ import sys
 import pytest
 
 
-from typing import Optional
+from typing import Dict, Optional
 import autoclick
 
 
@@ -32,23 +32,19 @@ class Foo:
 
 
 @autoclick.command()
-def simple(foo: Foo, *args, bar: int = 1, baz: Optional[float] = None, **kwargs):
+def simple(foo: Foo, bar: int = 1, baz: Optional[float] = None):
     """Process some metasyntactic variables.
 
     Args:
         foo: A Foo
-        *args: Extra args
         bar: A bar
         baz: A baz
-        **kwargs: Extra kwargs
     """
     global RESULT
     RESULT = dict(
         foo=foo,
-        args=args,
         bar=bar,
-        baz=baz,
-        kwargs=kwargs
+        baz=baz
     )
 
 
@@ -58,23 +54,26 @@ def grp():
 
 
 @grp.command("test")
-def simple2(foo: Foo, *args, bar: int = 1, baz: Optional[float] = None, **kwargs):
+def simple2(
+    foo: Foo,
+    bar: int = 1,
+    baz: Optional[float] = None,
+    extra_args: Dict[str, str] = {}
+):
     """Process some metasyntactic variables.
 
     Args:
         foo: A Foo
-        *args: Extra args
         bar: A bar
         baz: A baz
-        **kwargs: Extra kwargs
+        extra_args:
     """
     global RESULT
     RESULT = dict(
         foo=foo,
-        args=args,
         bar=bar,
         baz=baz,
-        kwargs=kwargs
+        extra_args=extra_args
     )
 
 
@@ -91,21 +90,28 @@ TEST_CASES = [
         fn=simple,
         expected=dict(
             foo=Foo(1),
-            args=(),
             bar=1,
-            baz=None,
-            kwargs={}
+            baz=None
         )
     ),
     CliTest(
         args=["test", "1"],
-        fn=simple2,
+        fn=grp,
         expected=dict(
             foo=Foo(1),
-            args=(),
             bar=1,
             baz=None,
-            kwargs={}
+            extra_args={}
+        )
+    ),
+    CliTest(
+        args=["test", "1", "-e", "foo=bar"],
+        fn=grp,
+        expected=dict(
+            foo=Foo(1),
+            bar=1,
+            baz=None,
+            extra_args={"foo": "bar"}
         )
     )
 ]
@@ -117,6 +123,7 @@ def test_cli(test_case):
     sys.argv = ["main"] + test_case.args
     try:
         test_case.fn()
-    except SystemExit:
-        pass
+    except SystemExit as err:
+        if err.code != 0:
+            raise
     assert RESULT == test_case.expected

@@ -50,6 +50,7 @@ class Composite(BaseDecorator[DEC], metaclass=ABCMeta):
             of whether they are optional or required.
         force_create: Always create an instance of the composite type, even if all
             the parameter values are `None`.
+        ignore_type_args: Whether it is safe to ignore any type arguments when matching.
         kwargs: Keyword arguments passed to :class:`BaseDecorator` constructor.
 
     Kwargs:
@@ -84,19 +85,21 @@ class Composite(BaseDecorator[DEC], metaclass=ABCMeta):
     """
     def __init__(
         self,
-        parameters_as_args: bool = False,
         force_create: bool = False,
+        parameters_as_args: bool = False,
+        ignore_type_args: bool = False,
         **kwargs
     ):
-        self._parameters_as_args = parameters_as_args
         self.force_create = force_create
+        self._parameters_as_args = parameters_as_args
+        self._ignore_type_args = ignore_type_args
         self._parameters = None
         super().__init__(**kwargs)
 
     @property
     @abstractmethod
     def _match_type(self) -> Callable:
-        """The
+        """
         """
         pass
 
@@ -114,6 +117,13 @@ class Composite(BaseDecorator[DEC], metaclass=ABCMeta):
                 f"A composite for type {self._match_type} is already defined."
             )
         register_composite(self._match_type, self)
+        if (
+            self._ignore_type_args and
+            hasattr(self._match_type, "__args__") and
+            hasattr(self._match_type, "__origin__")
+        ):
+            register_composite(self._match_type.__origin__, self)
+
         return self._decorated
 
     def create_click_parameters(
@@ -238,7 +248,10 @@ def register_composite(type_: Type, composite: Composite):
 
 
 def get_composite(type_: Type) -> Optional[Composite]:
-    return COMPOSITES.get(type_, None)
+    comp = COMPOSITES.get(type_)
+    if comp is None and hasattr(type_, "__origin__"):
+        comp = COMPOSITES.get(type_.__origin__)
+    return comp
 
 
 # noinspection PyPep8Naming
@@ -260,6 +273,7 @@ class composite_factory(Composite[Callable]):
         dest_type: The composite type, i.e. the type that will be recognized in the
             signature of the command function and matched with this factory function.
             If not specified, it is inferred from the return type.
+        ignore_type_args: Whether type args can safely be ignored when matching.
         keep_underscores: Whether underscores should be retained in option names
             (True) or converted to hyphens (False).
         short_names: Dictionary mapping parameter names to short names. If

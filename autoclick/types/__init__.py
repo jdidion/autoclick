@@ -1,4 +1,5 @@
-from typing import Callable, Collection, Dict, Optional, Tuple, Type
+from abc import ABCMeta, abstractmethod
+from typing import Callable, Collection, Dict, List, Optional, Tuple, Type, Union, cast
 
 import click
 
@@ -24,6 +25,23 @@ class ParamTypeAdapter(click.ParamType):
 
     def convert(self, value, param, ctx):
         return self.fn(value, param, ctx)
+
+
+class AggregateTypeMixin(metaclass=ABCMeta):
+    @abstractmethod
+    def aggregate(self, values):
+        pass
+
+
+class Aggregate:
+    def __init__(self, param_name: str, param_type: AggregateTypeMixin):
+        self.param_name = param_name
+        self.param_type = param_type
+
+    def __call__(self, ctx: click.Context):
+        if self.param_name in ctx.params:
+            agg_value = self.param_type.aggregate(ctx.params.pop(self.param_name))
+            ctx.params[self.param_name] = agg_value
 
 
 def conversion(
@@ -107,7 +125,10 @@ def has_conversion(type_: Type) -> bool:
     return type_ in CONVERSIONS
 
 
-def get_conversion(match_type: Type, true_type: Optional[Type] = None) -> Callable:
+def get_conversion(
+    match_type: Type, true_type: Optional[Type] = None,
+    type_args: Optional[List[Type]] = None
+) -> Callable:
     """
     Gets a conversion function for the given type, if one is available.
 
@@ -115,6 +136,7 @@ def get_conversion(match_type: Type, true_type: Optional[Type] = None) -> Callab
         match_type: Type to match against.
         true_type: Type to auto-convert, if `match_type` does not match any
             registered conversions.
+        type_args: If the original type was generic, this is the list of type arguments.
 
     Returns:
         A Callable - generally either a click.ParamType (if a conversion was found) or
@@ -126,9 +148,14 @@ def get_conversion(match_type: Type, true_type: Optional[Type] = None) -> Callab
     if true_type is None:
         true_type = match_type
 
-    for filter_fn, conversion_fn in AUTOCONVERSIONS:
+    for filter_fn, conversion_fn, pass_type in AUTOCONVERSIONS:
         if filter_fn(true_type):
-            return conversion_fn(true_type)
+            args = []
+            if pass_type:
+                args.append(true_type)
+            if type_args:
+                args.append(type_args)
+            return conversion_fn(*args)
 
     if issubclass(true_type, Collection):
         return match_type
@@ -136,22 +163,36 @@ def get_conversion(match_type: Type, true_type: Optional[Type] = None) -> Callab
     return true_type
 
 
+def register_autoconversion(
+    filter_fn: Union[Type, Callable[[Type], bool]],
+    conversion_fn: Callable[[Type, Optional[List[Type]]], click.ParamType],
+    pass_type: bool = True
+):
+    if isinstance(filter_fn, type):
+        filter_type = cast(type, filter_fn)
+        filter_fn = lambda type_: issubclass(type_, filter_type)
+    AUTOCONVERSIONS.append((filter_fn, conversion_fn, pass_type))
+
+
 def autoconversion(
-    filter_fn: Callable[[Type], bool],
-    conversion_fn: Optional[Callable[[Type], click.ParamType]] = None
+    filter_fn: Union[Type, Callable[[Type], bool]],
+    conversion_fn: Optional[Callable[[Type], click.ParamType]] = None,
+    pass_type: bool = True
 ):
     """
-    Decorator
+    Decorator that registers an automatic conversion for a (usually built-in) type.
 
     Args:
         filter_fn: Function that returns a boolean indicating whether or not
             the autoconversion applies to a given type.
         conversion_fn: Function that returns a `click.ParamType` for a given type.
+        pass_type: Whether to pass the type being converted as the first argument
+            to the conversion function (defaults to True).
 
     Returns:
         An object that is a subclass of `click.ParamType`.
     """
-    def decorator(fn):
-        AUTOCONVERSIONS.append((filter_fn, conversion_fn or fn))
+    def decorator(fn: Callable[[Type], click.ParamType]):
+        register_autoconversion(filter_fn, conversion_fn or fn, pass_type)
         return fn
     return decorator

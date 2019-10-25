@@ -1,10 +1,13 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, Optional, Sequence, Set, Type, Union, cast
+from typing import (
+    Any, Callable, Dict, Iterable, Optional, Sequence, Set, Tuple, Type, Union, cast
+)
 
 import click
 
 from autoclick.composites import Composite, get_composite
 from autoclick.core import DEC, BaseDecorator, ParameterInfo, apply_to_parsed_args
+from autoclick.types import Aggregate, AggregateTypeMixin
 from autoclick.utils import EMPTY, LOG, get_global
 
 
@@ -19,6 +22,7 @@ class CommandMixin:
         conditionals: Dict[Sequence[str], Sequence[Callable]],
         validations: Dict[Sequence[str], Sequence[Callable]],
         composite_callbacks: Sequence[Callable[[dict], None]],
+        aggregate_callbacks: Sequence[Callable[[dict], None]],
         used_short_names: Set[str],
         **kwargs
     ):
@@ -26,6 +30,7 @@ class CommandMixin:
         self._conditionals = conditionals or {}
         self._validations = validations or {}
         self._composite_callbacks = composite_callbacks or {}
+        self._aggregate_callbacks = aggregate_callbacks or {}
         self._used_short_names = used_short_names or {}
 
     def parse_args(self, ctx, args):
@@ -34,7 +39,17 @@ class CommandMixin:
         apply_to_parsed_args(self._validations, ctx.params, update=False)
         for callback in self._composite_callbacks:
             callback(ctx)
+        for callback in self._aggregate_callbacks:
+            callback(ctx)
         return args
+
+    @staticmethod
+    def parse_extra_kwargs(extra_kwargs: Iterable[str]) -> dict:
+        def parse_kwarg(kwarg) -> Tuple[str, str]:
+            k, v = kwarg.split("=")
+            k = k.lstrip("-")
+            return k, v
+        return dict(parse_kwarg(kwarg) for kwarg in extra_kwargs)
 
 
 class AutoClickCommand(CommandMixin, click.Command):
@@ -251,8 +266,6 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
             self._used_short_names.update(used_short_names)
         self._default_values = default_values or {}
         self._pass_context = get_global("pass_context", pass_context)
-        self._allow_extra_arguments = False
-        self._allow_extra_kwargs = False
         self._add_version_option = version
 
     @property
@@ -262,17 +275,16 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
 
     def _handle_parameter_info(self, param: ParameterInfo) -> bool:
         if param.extra_arguments:
-            self._allow_extra_arguments = True
-            return False
+            LOG.warning("*args are not currently supported")
         elif param.extra_kwargs:
-            self._allow_extra_kwargs = True
-            return False
+            LOG.warning("**kwargs are not currently supported")
         return super()._handle_parameter_info(param)
 
     def _create_decorator(self) -> DEC:
         parameter_infos = self._get_parameter_info()
         command_params = []
         composite_callbacks = []
+        aggregate_callbacks = []
 
         # TODO
         # if self._add_version_option:
@@ -323,6 +335,9 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
                     argument_class=self._argument_class
                 ))
 
+            if isinstance(param.click_type, AggregateTypeMixin):
+                aggregate_callbacks.append(Aggregate(param.name, param.click_type))
+
         desc = None
         if self._docs and self._docs.description:
             desc = str(self._docs.description)
@@ -332,21 +347,18 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
             callback = click.pass_context(callback)
 
         # TODO: pass `no_args_is_help=True` unless there are no required parameters
+
         click_command = self._create_click_command(
             name=self.name,
             callback=callback,
+            params=command_params,
             help=desc,
             conditionals=self._conditionals,
             validations=self._validations,
             composite_callbacks=composite_callbacks,
+            aggregate_callbacks=aggregate_callbacks,
             **self._extra_click_kwargs
         )
-        click_command.params = command_params
-        if self._allow_extra_arguments:
-            click_command.allow_extra_arguments = True
-        if self._allow_extra_kwargs:
-            click_command.ignore_unknown_options = False
-
         return click_command
 
     @abstractmethod

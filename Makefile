@@ -1,19 +1,11 @@
 package = autoclick
 repo = jdidion/$(package)
-version = 0.6.1
+version = 0.7.0
 tests = tests
 pytestopts = -s -vv --show-capture=all
 desc = Release $(version)
 
 all: clean install test
-
-build_cgranges:
-	cd cgranges \
-	&& python setup.py build_ext -i \
-	&& python setup.py bdist_wheel
-
-install_cgranges: build_cgranges
-	pip install --upgrade cgranges/dist/cgranges*.whl
 
 build: clean
 	poetry build
@@ -24,7 +16,10 @@ lock:
 install: build
 	pip install --upgrade dist/$(package)-$(version)-*.whl $(installargs)
 
-test:
+install_test_deps:
+	pip install -r requirements-test.txt
+
+test: install_test_deps
 	coverage run -m pytest $(pytestopts) $(tests)
 	coverage report -m
 	coverage xml

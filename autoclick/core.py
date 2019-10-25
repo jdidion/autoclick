@@ -60,6 +60,7 @@ class ParameterInfo:
     ):
         self.name = name
         self.anno_type = param.annotation
+        self.anno_args = None
         self.click_type = click_type
         self.optional = not (required or param.default is EMPTY)
         self.default = None if param.default is EMPTY else param.default
@@ -130,6 +131,8 @@ class ParameterInfo:
                         ])
                 elif len(self.anno_type.__args__) == 1:
                     self.match_type = self.anno_type.__args__[0]
+                else:
+                    self.anno_args = self.anno_type.__args__
 
             self.anno_type = origin
 
@@ -171,7 +174,9 @@ class ParameterInfo:
             self.match_type = self.anno_type
 
         if self.click_type is None:
-            self.click_type = get_conversion(self.match_type, self.anno_type)
+            self.click_type = get_conversion(
+                self.match_type, self.anno_type, self.anno_args
+            )
 
         self.is_flag = (
             self.click_type == bool or
@@ -285,6 +290,7 @@ class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
             if param.name not in self._validations:
                 self._validations[(param.name,)] = []
             self._validations[(param.name,)].extend(vals)
+
         return True
 
     def _create_click_parameter(
