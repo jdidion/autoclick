@@ -1,3 +1,4 @@
+from abc import ABCMeta, abstractmethod
 from typing import Callable, Collection, Dict, List, Optional, Tuple, Type, Union, cast
 
 import click
@@ -24,6 +25,23 @@ class ParamTypeAdapter(click.ParamType):
 
     def convert(self, value, param, ctx):
         return self.fn(value, param, ctx)
+
+
+class AggregateTypeMixin(metaclass=ABCMeta):
+    @abstractmethod
+    def aggregate(self, values):
+        pass
+
+
+class Aggregate:
+    def __init__(self, param_name: str, param_type: AggregateTypeMixin):
+        self.param_name = param_name
+        self.param_type = param_type
+
+    def __call__(self, ctx: click.Context):
+        if self.param_name in ctx.params:
+            agg_value = self.param_type.aggregate(ctx.params.pop(self.param_name))
+            ctx.params[self.param_name] = agg_value
 
 
 def conversion(

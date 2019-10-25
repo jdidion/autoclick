@@ -7,6 +7,7 @@ import click
 
 from autoclick.composites import Composite, get_composite
 from autoclick.core import DEC, BaseDecorator, ParameterInfo, apply_to_parsed_args
+from autoclick.types import Aggregate, AggregateTypeMixin
 from autoclick.utils import EMPTY, LOG, get_global
 
 
@@ -21,6 +22,7 @@ class CommandMixin:
         conditionals: Dict[Sequence[str], Sequence[Callable]],
         validations: Dict[Sequence[str], Sequence[Callable]],
         composite_callbacks: Sequence[Callable[[dict], None]],
+        aggregate_callbacks: Sequence[Callable[[dict], None]],
         used_short_names: Set[str],
         **kwargs
     ):
@@ -28,6 +30,7 @@ class CommandMixin:
         self._conditionals = conditionals or {}
         self._validations = validations or {}
         self._composite_callbacks = composite_callbacks or {}
+        self._aggregate_callbacks = aggregate_callbacks or {}
         self._used_short_names = used_short_names or {}
 
     def parse_args(self, ctx, args):
@@ -35,6 +38,8 @@ class CommandMixin:
         apply_to_parsed_args(self._conditionals, ctx.params, update=True)
         apply_to_parsed_args(self._validations, ctx.params, update=False)
         for callback in self._composite_callbacks:
+            callback(ctx)
+        for callback in self._aggregate_callbacks:
             callback(ctx)
         return args
 
@@ -279,6 +284,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         parameter_infos = self._get_parameter_info()
         command_params = []
         composite_callbacks = []
+        aggregate_callbacks = []
 
         # TODO
         # if self._add_version_option:
@@ -329,6 +335,9 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
                     argument_class=self._argument_class
                 ))
 
+            if isinstance(param.click_type, AggregateTypeMixin):
+                aggregate_callbacks.append(Aggregate(param.name, param.click_type))
+
         desc = None
         if self._docs and self._docs.description:
             desc = str(self._docs.description)
@@ -347,6 +356,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
             conditionals=self._conditionals,
             validations=self._validations,
             composite_callbacks=composite_callbacks,
+            aggregate_callbacks=aggregate_callbacks,
             **self._extra_click_kwargs
         )
         return click_command

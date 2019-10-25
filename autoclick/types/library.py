@@ -22,7 +22,7 @@ from typing import (
 
 import click
 
-from autoclick.types import DEFAULT_METAVAR, autoconversion
+from autoclick.types import DEFAULT_METAVAR, AggregateTypeMixin, autoconversion
 
 
 T = TypeVar("T")
@@ -195,7 +195,7 @@ V = TypeVar("V")
 
 
 @autoconversion(dict, pass_type=False)
-class Mapping(BaseType):
+class Mapping(BaseType, AggregateTypeMixin):
     """
     """
     name = "mapping"
@@ -206,13 +206,14 @@ class Mapping(BaseType):
         super().__init__(metavar)
         self.kv_types = kv_types
 
-    def convert(self, value, param, ctx) -> Dict[K, V]:
+    def convert(self, value, param, ctx) -> Tuple[K, V]:
         # Todo: support conversion of key and value types. Need to expose
         #   core.CONVERSIONS.
-        def convert(k, v):
-            return self.kv_types[0](k), self.kv_types[1](v)
+        k, v = value.split("=")
+        return self.kv_types[0](k), self.kv_types[1](v)
 
-        return dict(convert(*item.split("=")) for item in value)
+    def aggregate(self, values: Iterable[Tuple[K, V]]) -> Dict[K, V]:
+        return dict(values)
 
 
 N = TypeVar('N', bound=Number)

@@ -55,8 +55,10 @@ def grp():
 
 @grp.command("test")
 def simple2(
-    foo: Foo, bar: int = 1, baz: Optional[float] = None,
-    extra_args: Optional[Dict[str, str]] = None
+    foo: Foo,
+    bar: int = 1,
+    baz: Optional[float] = None,
+    extra_args: Dict[str, str] = {}
 ):
     """Process some metasyntactic variables.
 
@@ -94,21 +96,22 @@ TEST_CASES = [
     ),
     CliTest(
         args=["test", "1"],
-        fn=simple2,
-        expected=dict(
-            foo=Foo(1),
-            bar=1,
-            baz=None
-        )
-    ),
-    CliTest(
-        args=["test", "1", "-q", "foo=bar"],
-        fn=simple2,
+        fn=grp,
         expected=dict(
             foo=Foo(1),
             bar=1,
             baz=None,
-            extra_kwargs={"foo": "bar"}
+            extra_args={}
+        )
+    ),
+    CliTest(
+        args=["test", "1", "-e", "foo=bar"],
+        fn=grp,
+        expected=dict(
+            foo=Foo(1),
+            bar=1,
+            baz=None,
+            extra_args={"foo": "bar"}
         )
     )
 ]
@@ -120,6 +123,7 @@ def test_cli(test_case):
     sys.argv = ["main"] + test_case.args
     try:
         test_case.fn()
-    except SystemExit:
-        pass
+    except SystemExit as err:
+        if err.code != 0:
+            raise
     assert RESULT == test_case.expected
