@@ -2,7 +2,7 @@ import sys
 import pytest
 
 
-from typing import Optional
+from typing import Dict, Optional
 import autoclick
 
 
@@ -55,7 +55,8 @@ def grp():
 
 @grp.command("test")
 def simple2(
-    foo: Foo, bar: int = 1, baz: Optional[float] = None
+    foo: Foo, bar: int = 1, baz: Optional[float] = None,
+    extra_args: Optional[Dict[str, str]] = None
 ):
     """Process some metasyntactic variables.
 
@@ -63,12 +64,14 @@ def simple2(
         foo: A Foo
         bar: A bar
         baz: A baz
+        extra_args:
     """
     global RESULT
     RESULT = dict(
         foo=foo,
         bar=bar,
-        baz=baz
+        baz=baz,
+        extra_args=extra_args
     )
 
 
@@ -96,6 +99,16 @@ TEST_CASES = [
             foo=Foo(1),
             bar=1,
             baz=None
+        )
+    ),
+    CliTest(
+        args=["test", "1", "-q", "foo=bar"],
+        fn=simple2,
+        expected=dict(
+            foo=Foo(1),
+            bar=1,
+            baz=None,
+            extra_kwargs={"foo": "bar"}
         )
     )
 ]
