@@ -270,9 +270,9 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
 
     def _handle_parameter_info(self, param: ParameterInfo) -> bool:
         if param.extra_arguments:
-            raise ValueError("*args are not currently supported")
+            LOG.warning("*args are not currently supported")
         elif param.extra_kwargs:
-            raise ValueError("**kwargs are not currently supported")
+            LOG.warning("**kwargs are not currently supported")
         return super()._handle_parameter_info(param)
 
     def _create_decorator(self) -> DEC:
