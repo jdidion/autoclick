@@ -290,6 +290,7 @@ class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
             if param.name not in self._validations:
                 self._validations[(param.name,)] = []
             self._validations[(param.name,)].extend(vals)
+
         return True
 
     def _create_click_parameter(

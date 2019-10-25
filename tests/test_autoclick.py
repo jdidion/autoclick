@@ -32,23 +32,19 @@ class Foo:
 
 
 @autoclick.command()
-def simple(foo: Foo, *args, bar: int = 1, baz: Optional[float] = None, **kwargs):
+def simple(foo: Foo, bar: int = 1, baz: Optional[float] = None):
     """Process some metasyntactic variables.
 
     Args:
         foo: A Foo
-        *args: Extra args
         bar: A bar
         baz: A baz
-        **kwargs: Extra kwargs
     """
     global RESULT
     RESULT = dict(
         foo=foo,
-        args=args,
         bar=bar,
-        baz=baz,
-        kwargs=kwargs
+        baz=baz
     )
 
 
@@ -58,23 +54,21 @@ def grp():
 
 
 @grp.command("test")
-def simple2(foo: Foo, *args, bar: int = 1, baz: Optional[float] = None, **kwargs):
+def simple2(
+    foo: Foo, bar: int = 1, baz: Optional[float] = None
+):
     """Process some metasyntactic variables.
 
     Args:
         foo: A Foo
-        *args: Extra args
         bar: A bar
         baz: A baz
-        **kwargs: Extra kwargs
     """
     global RESULT
     RESULT = dict(
         foo=foo,
-        args=args,
         bar=bar,
-        baz=baz,
-        kwargs=kwargs
+        baz=baz
     )
 
 
@@ -91,10 +85,8 @@ TEST_CASES = [
         fn=simple,
         expected=dict(
             foo=Foo(1),
-            args=(),
             bar=1,
-            baz=None,
-            kwargs={}
+            baz=None
         )
     ),
     CliTest(
@@ -102,10 +94,8 @@ TEST_CASES = [
         fn=simple2,
         expected=dict(
             foo=Foo(1),
-            args=(),
             bar=1,
-            baz=None,
-            kwargs={}
+            baz=None
         )
     )
 ]

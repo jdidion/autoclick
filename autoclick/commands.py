@@ -1,5 +1,7 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, Optional, Sequence, Set, Type, Union, cast
+from typing import (
+    Any, Callable, Dict, Iterable, Optional, Sequence, Set, Tuple, Type, Union, cast
+)
 
 import click
 
@@ -35,6 +37,14 @@ class CommandMixin:
         for callback in self._composite_callbacks:
             callback(ctx)
         return args
+
+    @staticmethod
+    def parse_extra_kwargs(extra_kwargs: Iterable[str]) -> dict:
+        def parse_kwarg(kwarg) -> Tuple[str, str]:
+            k, v = kwarg.split("=")
+            k = k.lstrip("-")
+            return k, v
+        return dict(parse_kwarg(kwarg) for kwarg in extra_kwargs)
 
 
 class AutoClickCommand(CommandMixin, click.Command):
@@ -251,8 +261,6 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
             self._used_short_names.update(used_short_names)
         self._default_values = default_values or {}
         self._pass_context = get_global("pass_context", pass_context)
-        self._allow_extra_arguments = False
-        self._allow_extra_kwargs = False
         self._add_version_option = version
 
     @property
@@ -262,11 +270,9 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
 
     def _handle_parameter_info(self, param: ParameterInfo) -> bool:
         if param.extra_arguments:
-            self._allow_extra_arguments = True
-            return False
+            raise ValueError("*args are not currently supported")
         elif param.extra_kwargs:
-            self._allow_extra_kwargs = True
-            return False
+            raise ValueError("**kwargs are not currently supported")
         return super()._handle_parameter_info(param)
 
     def _create_decorator(self) -> DEC:
@@ -332,21 +338,17 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
             callback = click.pass_context(callback)
 
         # TODO: pass `no_args_is_help=True` unless there are no required parameters
+
         click_command = self._create_click_command(
             name=self.name,
             callback=callback,
+            params=command_params,
             help=desc,
             conditionals=self._conditionals,
             validations=self._validations,
             composite_callbacks=composite_callbacks,
             **self._extra_click_kwargs
         )
-        click_command.params = command_params
-        if self._allow_extra_arguments:
-            click_command.allow_extra_arguments = True
-        if self._allow_extra_kwargs:
-            click_command.ignore_unknown_options = False
-
         return click_command
 
     @abstractmethod
