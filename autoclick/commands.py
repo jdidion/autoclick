@@ -249,6 +249,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         default_values: Optional[Dict[str, Any]] = None,
         version: Optional[Union[str, bool]] = None,
         pass_context: Optional[bool] = None,
+        main: bool = False,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -266,6 +267,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
             self._used_short_names.update(used_short_names)
         self._default_values = default_values or {}
         self._pass_context = get_global("pass_context", pass_context)
+        self._main = main
         self._add_version_option = version
 
     @property
@@ -359,6 +361,15 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
             aggregate_callbacks=aggregate_callbacks,
             **self._extra_click_kwargs
         )
+
+        if (
+            self._main and
+            hasattr(self._decorated, "__module__") and
+            self._decorated.__module__ == "__main__"
+        ):
+            import atexit
+            atexit.register(click_command)
+
         return click_command
 
     @abstractmethod
