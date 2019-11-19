@@ -244,7 +244,6 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         command_help: Optional[str] = None,
         option_class: Type[click.Option] = click.Option,
         argument_class: Type[click.Argument] = click.Argument,
-        extra_click_kwargs: Optional[dict] = None,
         used_short_names: Optional[Set[str]] = None,
         default_values: Optional[Dict[str, Any]] = None,
         version: Optional[Union[str, bool]] = None,
@@ -261,7 +260,6 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         self._command_help = command_help
         self._option_class = option_class
         self._argument_class = argument_class
-        self._extra_click_kwargs = extra_click_kwargs or {}
         self._used_short_names = set()
         if used_short_names:
             self._used_short_names.update(used_short_names)
@@ -348,7 +346,12 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         if self._pass_context:
             callback = click.pass_context(callback)
 
-        # TODO: pass `no_args_is_help=True` unless there are no required parameters
+        if (
+            "no_args_is_help" not in self._extra_kwargs and
+            any(p.required for p in command_params)
+        ):
+            # Pass `no_args_is_help=True` unless there are no required parameters
+            self._extra_kwargs["no_args_is_help"] = True
 
         click_command = self._create_click_command(
             name=self.name,
@@ -359,7 +362,7 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
             validations=self._validations,
             composite_callbacks=composite_callbacks,
             aggregate_callbacks=aggregate_callbacks,
-            **self._extra_click_kwargs
+            **self._extra_kwargs
         )
 
         if (
@@ -403,8 +406,6 @@ class command(BaseCommandDecorator[click.Command]):
             funciton docstring.
         option_class: Class to use when creating :class:`click.Option`s.
         argument_class: Class to use when creating :class:`click.Argument`s.
-        extra_click_kwargs: Dict of extra arguments to pass to the
-            :class:`click.Command` constructor.
         keep_underscores: Whether underscores should be retained in option names
             (True) or converted to hyphens (False).
         short_names: Dictionary mapping parameter names to short names. If
@@ -434,6 +435,7 @@ class command(BaseCommandDecorator[click.Command]):
             extracted from the function docstring.
         pass_context: Whether to pass in the click.Context as the first argument
             to the function.
+        kwargs: Any extra keyword arguments are passed to the Command.
     """
     def __init__(
         self,
@@ -477,8 +479,6 @@ class group(BaseCommandDecorator[click.Group]):
             funciton docstring.
         option_class: Class to use when creating :class:`click.Option`s.
         argument_class: Class to use when creating :class:`click.Argument`s.
-        extra_click_kwargs: Dict of extra arguments to pass to the
-            :class:`click.Command` constructor.
         keep_underscores: Whether underscores should be retained in option names
             (True) or converted to hyphens (False).
         short_names: Dictionary mapping parameter names to short names. If
@@ -508,6 +508,7 @@ class group(BaseCommandDecorator[click.Group]):
             extracted from the function docstring.
         pass_context: Whether to pass in the click.Context as the first argument
             to the function.
+        kwargs: Any extra kwargs are passed to the Group.
     """
     def __init__(
         self,
@@ -518,7 +519,7 @@ class group(BaseCommandDecorator[click.Group]):
     ):
         super().__init__(name=name, **kwargs)
         self._group_class = group_class
-        self._extra_click_kwargs["commands"] = commands or {}
+        self._extra_kwargs["commands"] = commands or {}
 
     def _create_click_command(self, **kwargs) -> click.Group:
         return cast(click.Group, self._group_class(

@@ -1,5 +1,11 @@
 # AutoClick Changes
 
+## 0.8.0 (2019.11.19)
+
+* Remove `extra_click_kwargs` parameter to command/group decorator - instead, any extra keyword arguments to the decorator are passed to the Command/Group initializer.
+* Add ability to automatically run a command/group when a module is called as an executable (i.e. when __name__ == "__main__") by setting `main=True` in the command/group decorator.
+* Automatically show help when no arguments are passed to a command/group, unless it does not have any required arguments.
+
 ## 0.7.0 (2019.10.25)
 
 * Remove support for *args and **kwargs (these never worked properly anyway)
