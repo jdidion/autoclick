@@ -346,12 +346,13 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         if self._pass_context:
             callback = click.pass_context(callback)
 
-        if (
-            "no_args_is_help" not in self._extra_kwargs and
-            any(p.required for p in command_params)
-        ):
-            # Pass `no_args_is_help=True` unless there are no required parameters
-            self._extra_kwargs["no_args_is_help"] = True
+        # Todo: this is pending release of click 7.1
+        # if (
+        #     "no_args_is_help" not in self._extra_kwargs and
+        #     any(p.required for p in command_params)
+        # ):
+        #     # Pass `no_args_is_help=True` unless there are no required parameters
+        #     self._extra_kwargs["no_args_is_help"] = True
 
         click_command = self._create_click_command(
             name=self.name,
