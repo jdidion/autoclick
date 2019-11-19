@@ -205,7 +205,8 @@ class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
         hidden: Optional[Sequence[str]] = None,
         show_defaults: bool = False,
         param_help: Optional[Dict[str, str]] = None,
-        decorated: Optional[Callable] = None
+        decorated: Optional[Callable] = None,
+        **extra_kwargs
     ):
         self._keep_underscores = get_global("keep_underscores", keep_underscores)
         self._short_names = short_names or {}
@@ -219,6 +220,7 @@ class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
         self._param_help = param_help or {}
         self._decorated = None
         self._docs = None
+        self._extra_kwargs = extra_kwargs
 
         def _as_many_to_many(d):
             if d is None:
