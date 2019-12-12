@@ -1,6 +1,9 @@
 from abc import ABCMeta, abstractmethod
+import json
+import sys
 from typing import (
-    Any, Callable, Dict, Iterable, Optional, Sequence, Set, Tuple, Type, Union, cast
+    Any, Callable, Dict, Iterable, Optional, Sequence, Set, Tuple, Type, TypeVar,
+    Union, cast
 )
 
 import click
@@ -24,6 +27,7 @@ class CommandMixin:
         composite_callbacks: Sequence[Callable[[dict], None]],
         aggregate_callbacks: Sequence[Callable[[dict], None]],
         used_short_names: Set[str],
+        handle_return: Union[bool, Callable[[Any], Optional[Any]]] = False,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -32,6 +36,7 @@ class CommandMixin:
         self._composite_callbacks = composite_callbacks or {}
         self._aggregate_callbacks = aggregate_callbacks or {}
         self._used_short_names = used_short_names or {}
+        self._handle_return = handle_return
 
     def parse_args(self, ctx, args):
         click.Command.parse_args(cast(click.Command, self), ctx, args)
@@ -51,12 +56,67 @@ class CommandMixin:
             return k, v
         return dict(parse_kwarg(kwarg) for kwarg in extra_kwargs)
 
+    def invoke(self, ctx):
+        rv = cast(click.BaseCommand, super()).invoke(ctx)
+
+        if rv is not None and self._handle_return:
+            if self._handle_return is True:
+                handler = default_return_handler
+            else:
+                handler = cast(Callable[[Any], Optional[Any]], self._handle_return)
+
+            rv = handler(rv)
+
+        return rv
+
+
+def default_return_handler(rv) -> Optional[Any]:
+    """
+    Default function for handling a return value.
+
+    * If the value is an int, treat it as a return code (raise Exit)
+    * Otherwise call `dump_return_handler(rv)`
+
+    Args:
+        rv: The return value
+
+    Returns:
+        `rv` (unless an Exit exception is raised)
+    """
+    if isinstance(rv, int):
+        raise click.exceptions.Exit(cast(int, rv))
+    else:
+        return dump_return_handler(rv)
+
+
+T = TypeVar("T")
+
+
+def dump_return_handler(rv: T) -> T:
+    """
+    Handle a return value by dumping it to stdout.
+
+    * If the value is JSON serializable, serialize it to stdout
+    * Otherwise convert the value to a string and print it
+
+    Args:
+        rv: The return value
+
+    Returns:
+        `rv`
+    """
+    try:
+        json.dump(rv, sys.stdout)
+    except TypeError:
+        print(str(rv), file=sys.stdout)
+
+    return rv
+
 
 class AutoClickCommand(CommandMixin, click.Command):
     """
     Subclass of :class:`click.Command` that also inherits :class:`CommandMixin`.
     """
-    pass
 
 
 class AutoClickGroup(CommandMixin, click.Group):
@@ -78,7 +138,8 @@ class AutoClickGroup(CommandMixin, click.Group):
         decorated: Optional[Callable] = None,
         **kwargs
     ):
-        """A shortcut decorator for declaring and attaching a command to
+        """
+        A shortcut decorator for declaring and attaching a command to
         the group.  This takes the same arguments as :func:`command` but
         immediately registers the created command with this instance by
         calling into :meth:`add_command`.
@@ -104,7 +165,8 @@ class AutoClickGroup(CommandMixin, click.Group):
         decorated: Optional[Callable] = None,
         **kwargs
     ):
-        """A shortcut decorator for declaring and attaching a group to
+        """
+        A shortcut decorator for declaring and attaching a group to
         the group.  This takes the same arguments as :func:`group` but
         immediately registers the created command with this instance by
         calling into :meth:`add_command`.
@@ -211,7 +273,8 @@ class DefaultAutoClickGroup(AutoClickGroup):
 
 
 class DefaultCommandFormatter:
-    """Wraps a formatter to mark a default command.
+    """
+    Wraps a formatter to mark a default command.
     """
 
     def __init__(self, group_, formatter, mark='*'):

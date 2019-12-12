@@ -159,7 +159,7 @@ You can also use distinct types created by the `typing.NewType` function for typ
 import autoclick
 from typing import NewType
 
-PositiveEven = NewType('PositiveEven', int)
+PositiveEven = NewType("PositiveEven", int)
 
 @autoclick.validation(PositiveEven)
 def validate_positive_even(arg: int):
@@ -181,6 +181,8 @@ import autoclick
         "a": positive, even
     }
 )
+def command(a: int):
+    ...
 ```
 
 2. Create a composite validation:
@@ -210,7 +212,8 @@ import autoclick
 
 @autoclick.command(show_defaults=True)
 def main(x: str = "hello"):
-    """Print a string
+    """
+    Prints a string
 
     Args:
         x: The string to print.
@@ -225,7 +228,7 @@ if __name__ == "__main__":
 $ python test.py --help
 Usage: test.py [OPTIONS] [X]
 
-  Print a string
+  Prints a string
 
 Options:
   -x, --x TEXT  The string to print.  [default: hello]
@@ -308,9 +311,3 @@ The following sections describe details of how the arguments to click classes/fu
 * is_flag: True for keyword arguments of type boolean; assumed to be the True option unless the name starts with 'no'; the other option will always be inferred by adding/removing 'no-'
 * multiple: True for sequence types
 * help: Parsed from docstring.
-
-## Todo
-
-* Documentation for positional arguments (see [](https://github.com/pallets/click/issues/587))
-* Handle return values (e.g. if a int, treat as a return code; if a dict, convert to JSON and write to stdout, etc)
-* Look at incorporating features from contributed packages: [](https://github.com/click-contrib)
