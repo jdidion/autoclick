@@ -1,5 +1,9 @@
 # AutoClick Changes
 
+## dev
+
+* Add option (`handle_return`) to automatically handle return value
+
 ## 0.8.0 (2019.11.19)
 
 * Remove `extra_click_kwargs` parameter to command/group decorator - instead, any extra keyword arguments to the decorator are passed to the Command/Group initializer.
