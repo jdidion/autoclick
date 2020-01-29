@@ -16,102 +16,56 @@ A CLI Spec describes one or more commands. A valid CLI Spec JSON document has a 
 
 ```json
 {
-
-  "extensions: [
+  "extensions": [
     {
       "namespace": "com.foo.bar",
       "schema": "https://bar.foo.com/cli-extensions.json"
     }
   ],
-
   "commands": [
-
     {
-
       "name": "say",
-
       "help": "Say something to the user",
-
       "aliases": [
-
         {
-
           "name": "hi",
-
           "os": ["vms"]
-
         }
-
       ],
-
       "syntax": "gnu",
-
       "version": ">=1.0.1",
-
       "subcommands": [
-
         {
-
           "name": "hello",
-
           "help": "Say hello",
-
           "options": [
-
             {
-
               "name": "age",
-
               "flag": "a",
-
               "label": "Age",
-
               "help": "The user’s age",
-
               "type": "int",
-
               "range": [0, 150],
-
               "extensions": {
-
                 "com.foo.bar": {
-
                   "gui-hints": "slider"
-
                 }
-
               }
-
             }
-
           ],
-
           "operands": [
-
             {
-
               "name": "username",
-
               "label": "Username",
-
               "help": "The user to greet (defaults to current user)",
-
               "type": "string",
-
               "required": false
-
             }
-
           ]
-
         }
-
       ]
-
     }
-
   ]
-
 }
 ```
 
