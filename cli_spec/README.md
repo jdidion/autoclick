@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document specifies a JSON schema for encoding the metadata related to a command-line interface in a syntax-independent manner. The goal is to provide an interchange format by which CLIs may be self-documenting (i.e. a command line tool can generate a metadata file describing all of its sub-commands, arguments, and options), and from which tool wrappers may be generated (e.g. CWL tools and WDL tasks).
+This document specifies a schema for encoding the metadata related to a command-line interface in a syntax-independent manner. The goal is to provide an interchange format by which CLIs may be self-documenting (i.e. a command line tool can generate a metadata file describing all of its sub-commands, arguments, and options), and from which tool wrappers may be generated (e.g. CWL tools and WDL tasks).
 
 ## Assumptions
 
