@@ -19,7 +19,8 @@ A CLI Spec describes one or more commands. A valid CLI Spec JSON document has a 
   "extensions": [
     {
       "namespace": "com.foo.bar",
-      "schema": "https://bar.foo.com/cli-extensions.json"
+      "alias": "gui",
+      "url": "https://bar.foo.com/cli-extensions.json"
     }
   ],
   "commands": [
@@ -46,11 +47,7 @@ A CLI Spec describes one or more commands. A valid CLI Spec JSON document has a 
               "help": "The user’s age",
               "type": "int",
               "range": [0, 150],
-              "extensions": {
-                "com.foo.bar": {
-                  "gui-hints": "slider"
-                }
-              }
+              "properties": {"gui:hints": "slider"}
             }
           ],
           "operands": [
@@ -121,7 +118,7 @@ The *groups* member has an array value, and each element is a group object. See 
 
 #### subcommands
 
-If a command has multiple sub-commands (e.g. git), the *subcommands* element is a list whose members are subcommand objects. A subcommand can have the same members as *command*, except that it does not allow *syntax, version*, or *license* members - these are inherited from the parent command. Subcommands can be nested to any level of depth.
+If a command has multiple sub-commands (e.g. git), the *subcommands* element is a list whose members are subcommand objects. A subcommand can have the same members as *command*; any missing members are inherited from the parent command. Subcommands can be nested to any level of depth.
 
 ### Group
 
@@ -249,21 +246,39 @@ When *hidden* is *true*, the value of *channel* may take on additional implicati
 
 Whether the program requires that this input/output file is a regular file, or if it may be a named pipe. Boolean; default is *false*. Only valid for parameters of type "file".
 
+### Tags and Properties
+
+Any object value in the spec may include arbitrary metadata in the form of *tags* and/or *properties*.
+
+Tags and property keys may contain any valid characters *except* that the colon (':') is reserved as a separator between an extension name/alias (the "namespace") and the tag/key; i.e. if a tag/key contains a colon, everything before the first colon is assumed to be the namespace.
+
+#### tags
+
+An array of string tags.
+
+#### properties
+
+A property is an object with arbitrary keys and values. Property keys are subject to the same restrictions as tags; property values may be any valid JSON.
+
 ### Extensions
 
 A consumer of a spec may define abitrary extensions for use by spec producers. For example, a program that generates a GUI interface to a command-line tool may add extensions to enable the spec producer to add hints for what types of UI component should be used for each argument.
 
 There is an optional top-level *extensions* member whose value is a list of extension objects. An extension must be defined at the top level before it may be used elsewhere in the spec. The allowed fields for an extension object are below.
 
-Once extensions are defined, then any object-type member of the schema may include an *extensions* element with an object value. Each member of an *extensions* object must have a string key that is a namespace that matches an entry in the top-level *extensions* element. The value may be any valid JSON. However, if the namespaces’ URL resolves to a valid JSON schema, then the consumer of the CLI Spec may validate the value against the schema and raise an error if the value is invalid.
+Once extensions are defined, then any object-type member of the schema may use the extension name (or alias) as a prefix to any *tag* or *property*.
 
 #### name
 
 The extension name. String; required. Reverse-domain-name notation should be used when possible, to avoid collisions.
 
+#### alias
+
+A short alias for the extension.
+
 #### url
 
-The URL that resolves to a JSON schema that can be used to validate instances of the extension. String; optional.
+A URL for the extension. If the URL resolves, the consumer of the spec may try to use the contents to validate the usages of the extension. String; optional.
 
 ## References
 

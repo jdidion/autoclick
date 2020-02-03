@@ -1,5 +1,6 @@
 extension :: {
   name: string
+  alias?: string
   url?: string
 }
 
@@ -9,17 +10,22 @@ if len(spec.extensions) > 0 {
   }
 }
 
-alias :: {
+base :: {
+  tags: [ "string", ... ]
+  properties: _
+}
+
+alias :: base & {
   name: string
   os?: [ string, ... ]
 }
 
-return_codes :: {
+return_codes :: base & {
   success?: [ int, ... ]
   retry?: [ int, ... ]
 }
 
-parameter :: {
+parameter :: base & {
   name: string
   type: *"string" | "integer" | "float" | "boolean" | "file" | "directory"
   label?: string
@@ -59,7 +65,7 @@ constraint :: {
   max_allowed?: int
 }
 
-group :: {
+group :: base & {
   title?: string
   help?: string
   constraints: [ constraint, ... ]
@@ -68,7 +74,7 @@ group :: {
   groups?: [ group, ... ]
 }
 
-subcommand :: {
+command :: base & {
   name: string
   help?: string
   aliases?: [ alias, ... ]
@@ -77,10 +83,7 @@ subcommand :: {
   options?: [ option, ... ]
   operands?: [ operand, ... ]
   groups?: [ group, ... ]
-  subcommands?: [ subcommand, ... ]
-}
-
-command :: subcommand & {
+  subcommands?: [ command, ... ]
   syntax: *"gnu" | "posix" | "posix-strict"
   version?: string
   license?: string
