@@ -208,7 +208,7 @@ The default value of the parameter. Optional, except for hidden parameters; but 
 
 #### range
 
-When the data type is "integer" or "float", *range* can be used to limit the allowed values to a specific range. The range is specified as an array *[min, max[, step]]*, where *min*/*max* is an integer, a float (if *type* is "float"), or a the string "*" meaning the smallest/largest allowed value. If *min* and *max* are both integers, then a third integer array element is allowed indicating the step. If *default *is specified, the value must be within *range*.
+When the data type is "integer" or "float", *range* can be used to limit the allowed values to a specific range. The range is specified as an array *[min, max[, step]]*, where *min*/*max* is an integer, a float (if *type* is "float"), or the string "*" meaning the smallest/largest allowed value. If *min* and *max* are both integers, then a third integer array element is allowed indicating the step. If *default *is specified, the value must be within *range*.
 
 #### choices
 
@@ -216,25 +216,25 @@ The allowed option values. Optional. If specified, must be an array whose elemen
 
 #### regexp
 
-A regular expression that may be used to validate the option arguments. May be specified regardless of the *type*, but typically this is used with "string" values. If *default *is specified, the value must match *regexp*.
+A regular expression that may be used to validate the option arguments. May be specified regardless of the *type*, but typically this is used with "string" values. If *default* is specified, the value must match *regexp*.
 
 #### formats
 
-For options of type "file", specifies an array allowed file formats. A format may be specified using "glob" syntax, meaning that the file name should be checked against the pattern, or it may be an [International Resource Identifier](https://tools.ietf.org/html/rfc3987). Optional; defaults to ["*"]. If *default *is specified, it must match at least one of the formats.
+For options of type "file", specifies an array allowed file formats. A format may be specified using "glob" syntax, meaning that the file name should be checked against the pattern, or it may be an [International Resource Identifier](https://tools.ietf.org/html/rfc3987). Optional; defaults to ["*"]. If *default* is specified, it must match at least one of the formats.
 
 #### channel
 
-The channel of an input or output parameter. Optional; allowed values are "none", "input", "output", and "error". When *type *is "file" or "directory", the default value is "input" for operands and "output" for options; otherwise the default value is "none".
+The channel of an input or output parameter. Optional; allowed values are "none", "input", "output", and "error". When *type* is "file" or "directory", the default value is "input" for operands and "output" for options; otherwise the default value is "none".
 
 When *hidden* is *true*, the value of *channel* may take on additional implications, depending on the values of *type* and *default*. It is an error for any command to have more than one hidden parameter each with *channel* values of "input", "output", and "error".
 
-* When *channel *is "input"
+* When *channel* is "input"
 
     * If *default* is defined, the value is passed to the command via standard input
 
-        * If *type* is "file", the contents of the file are sent to standard input (e.g. using an input redirect or by "cat"-int the file and piping it to the command)
+        * If *type* is "file", the contents of the file are sent to standard input (e.g. using an input redirect or by *cat*ing the file and piping it to the command)
 
-        * Otherwise the value itself is sent to standard input (e.g. using "echo")
+        * Otherwise the value itself is sent to standard input (e.g. using *echo*)
 
     * Otherwise, the system standard input is redirected to the command.
 
