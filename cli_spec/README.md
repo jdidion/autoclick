@@ -110,7 +110,7 @@ An object that specifies the meanings of different return codes. The default val
 
 #### options and operands
 
-The user-definable parameters to a command are specified by the *options*, *operands* members. The key difference between an option and an operand is that an option consists of a flag (e.g. *-f *in POSIX syntax or *--long-name* in GNU syntax) followed by zero or more option values, whereas an operand is a single value. Operands are also sometimes called "arguments" or "positional arguments". Typically, options are not required (i.e. "optional") while operands are, but this is not always the case. In POSIX syntax, any options must be specified first, followed by any operands; GNU allows for the mixing of options and operands. See the "Parameter" section below for details on the members of these elements.
+The user-definable parameters to a command are specified by the *options* and *operands* members. The difference between an option and an operand is that an option consists of a flag (e.g. *-f* in POSIX syntax or *--long-name* in GNU syntax) followed by zero or more option values, whereas an operand is a single value. Operands are also sometimes called "arguments" or "positional arguments". Typically, options are not required (i.e. "optional") while operands are, but this is not always the case. In POSIX syntax, any options must be specified first, followed by any operands; GNU allows for the mixing of options and operands. See the "Parameter" section below for details on the members of these elements.
 
 #### groups
 
