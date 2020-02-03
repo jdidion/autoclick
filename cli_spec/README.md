@@ -47,7 +47,9 @@ A CLI Spec describes one or more commands. A valid CLI Spec JSON document has a 
               "help": "The user’s age",
               "type": "int",
               "range": [0, 150],
-              "properties": {"gui:hints": "slider"}
+              "properties": {
+                "gui:hints": "slider"
+              }
             }
           ],
           "operands": [
