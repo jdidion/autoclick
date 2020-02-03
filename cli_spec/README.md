@@ -137,7 +137,6 @@ Help text for the group. Optional.
 An object with one or more of the following members:
 
 * min_required: Integer; minimum number of the options in the group that must have a value specified (either on the command line or via their *default* member).
-
 * max_allowed: Integer; maximum number of the options in the group that may have a value specified. For example, *max_allowed: 1* indicates mutual exclusivity of the parameters in the group.
 
 #### options, operands, and groups
@@ -191,15 +190,10 @@ The delimiter between arguments in the option value when more than one argument 
 The data type of the option value. The the option allows multiple arguments, all arguments must be the same type. Optional; defaults to "string".
 
 * string: a string of one or more characters; by default, all characters are allowed, but this may be restricted by *regexp* or *choices.*
-
 * integer: by default, any integer in the range allowed by POSIX ([-2147483647, 2147483647]), but this may be restricted by *range* or *choices.*
-
 * float: by default, any floating point number in the range allowed by the operating system, but this may be restricted by *range* or *choices.*
-
 * boolean: no option value is accepted; presence of the flag indicates a *true* value and absence indicates *false*, but this can be inverted using *"default": true.*
-
 * file: a file path. Represented as a string, but with the additional implication that the consumer of the spec may validate that the file exists (if *channel* is "input") or that the path is writable (if *channel* is "output"). When *nargs* is greater than 1, the use of a "glob" expression should be supported to select multiple files that match a given pattern.
-
 * directory: a directory path. Represented as a string, but with the additional implication that the consumer of the spec may validate that the directory exists (if *channel* is "input") or that the directory is creatable/writable (if *channel* is "output"). 
 
 #### default
@@ -229,38 +223,17 @@ The channel of an input or output parameter. Optional; allowed values are "none"
 When *hidden* is *true*, the value of *channel* may take on additional implications, depending on the values of *type* and *default*. It is an error for any command to have more than one hidden parameter each with *channel* values of "input", "output", and "error".
 
 * When *channel* is "input"
-
     * If *default* is defined, the value is passed to the command via standard input
-
         * If *type* is "file", the contents of the file are sent to standard input (e.g. using an input redirect or by *cat*ing the file and piping it to the command)
-
         * Otherwise the value itself is sent to standard input (e.g. using *echo*)
-
     * Otherwise, the system standard input is redirected to the command.
-
 * When *channel* is "output" or "error"
-
-    * If *default *is defined, then *type* must be "file" and the contents of standard output/error are redirected to the file defined by *default*.
-
+    * If *default* is defined, then *type* must be "file" and the contents of standard output/error are redirected to the file defined by *default*.
     * Otherwise, the contents of standard output/error should be recorded and made available to the caller (e.g. by assigning it to a variable *name* or by writing it to a temporary file or another output device). If *type* is anything other than "string", the caller may first validate (or perform type conversion) on the contents of standard output/error.
 
 #### streamable
 
 Whether the program requires that this input/output file is a regular file, or if it may be a named pipe. Boolean; default is *false*. Only valid for parameters of type "file".
-
-### Tags and Properties
-
-Any object value in the spec may include arbitrary metadata in the form of *tags* and/or *properties*.
-
-Tags and property keys may contain any valid characters *except* that the colon (':') is reserved as a separator between an extension name/alias (the "namespace") and the tag/key; i.e. if a tag/key contains a colon, everything before the first colon is assumed to be the namespace.
-
-#### tags
-
-An array of string tags.
-
-#### properties
-
-A property is an object with arbitrary keys and values. Property keys are subject to the same restrictions as tags; property values may be any valid JSON.
 
 ### Extensions
 
@@ -282,21 +255,27 @@ A short alias for the extension.
 
 A URL for the extension. If the URL resolves, the consumer of the spec may try to use the contents to validate the usages of the extension. String; optional.
 
+### Tags and Properties
+
+Any object value in the spec may include arbitrary metadata in the form of *tags* and/or *properties*.
+
+Tags and property keys may contain any valid characters *except* that the colon (':') is reserved as a separator between an extension name/alias (the "namespace") and the tag/key; i.e. if a tag/key contains a colon, everything before the first colon is assumed to be the namespace.
+
+#### tags
+
+An array of string tags.
+
+#### properties
+
+An object with arbitrary keys and values. Property keys are subject to the same restrictions as tags; property values may be any valid JSON.
+
 ## References
 
 * POSIX (i.e. IEEE Std 1003.1-2017): [https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html)
-
 * GNU standards for command line interfaces: [https://www.gnu.org/prep/standards/standards.html](https://www.gnu.org/prep/standards/standards.html)
-
 * CTK/Slicer
-
     * [http://www.commontk.org/index.php/Documentation/Command_Line_Interface](http://www.commontk.org/index.php/Documentation/Command_Line_Interface)
-
     * [https://www.slicer.org/wiki/Documentation/Nightly/Developers/SlicerExecutionModel#XML_Schema](https://www.slicer.org/wiki/Documentation/Nightly/Developers/SlicerExecutionModel#XML_Schema)
-
     * [https://www.slicer.org/wiki/Slicer3:Execution_Model_Discussion#Initial_JSON_output_from_sample_registration_package](https://www.slicer.org/wiki/Slicer3:Execution_Model_Discussion#Initial_JSON_output_from_sample_registration_package)
-
 * CWL: [https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding](https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding)
-
 * WDL: [https://github.com/openwdl/wdl/blob/master/versions/1.0/SPEC.md](https://github.com/openwdl/wdl/blob/master/versions/1.0/SPEC.md)
-
