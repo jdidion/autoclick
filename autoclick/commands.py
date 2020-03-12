@@ -7,6 +7,7 @@ import click
 
 from autoclick.composites import Composite, get_composite
 from autoclick.core import DEC, BaseDecorator, ParameterInfo, apply_to_parsed_args
+from autoclick.parameters import version_option
 from autoclick.types import Aggregate, AggregateTypeMixin
 from autoclick.utils import EMPTY, LOG, get_global
 
@@ -286,9 +287,13 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         composite_callbacks = []
         aggregate_callbacks = []
 
-        # TODO
-        # if self._add_version_option:
-        #     command_params.append()
+        if self._add_version_option:
+            if isinstance(self._add_version_option, str):
+                version = cast(str, self._add_version_option)
+            else:
+                version = None
+
+            command_params.append(version_option(version))
 
         if self._pass_context:
             ctx_param = list(parameter_infos.keys())[0]

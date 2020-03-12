@@ -1,5 +1,9 @@
 # AutoClick Changes
 
+## 0.8.1 (2020.03.12)
+
+* Automatically add version option `version` argument to command/group decorator is not `None`
+
 ## 0.8.0 (2019.11.19)
 
 * Remove `extra_click_kwargs` parameter to command/group decorator - instead, any extra keyword arguments to the decorator are passed to the Command/Group initializer.

@@ -1,3 +1,4 @@
+from importlib import import_module
 from pathlib import Path
 import sys
 from typing import Optional, Type
@@ -48,9 +49,7 @@ def get_module():
         raise RuntimeError("Could not determine module")
 
 
-def get_version(module):
-    ver = None
-
+def get_version(pkg):
     # Try pkg_resources
     try:
         import pkg_resources
@@ -59,15 +58,15 @@ def get_version(module):
     else:
         try:
             # Try get_distribution
-            ver = pkg_resources.get_distribution(module).version
+            return pkg_resources.get_distribution(pkg).version
         except:
             # Fall back to looking for entry point
             for dist in pkg_resources.working_set:
                 scripts = dist.get_entry_map().get("console_scripts") or {}
+
                 for script_name, entry_point in scripts.items():
-                    if entry_point.module_name == module:
-                        ver = dist.version
-                        break
+                    if entry_point.module_name == pkg:
+                        return dist.version
 
     # Try pyproject.toml
     try:
@@ -76,18 +75,27 @@ def get_version(module):
         pass
     else:
         path = Path.cwd()
+
         while path:
             pyproj = path / "pyproject.toml"
+
             if pyproj.exists():
                 with open(pyproj, "rt") as inp:
-                    ver = toml_mod.parse(inp.read())["tool"]["poetry"]["version"]
+                    return toml_mod.parse(inp.read())["tool"]["poetry"]["version"]
             else:
                 path = path.parent
 
-    if ver is None:
-        raise RuntimeError("Could not determine version")
+    # Try [_]version.py, which is used by versioneer and other tools
+    for mod_name in ("version", "_version"):
+        try:
+            mod = import_module(mod_name, pkg)
 
-    return ver
+            if hasattr(mod, "__version__"):
+                return getattr(mod, "__version__")
+        except ImportError:
+            pass
+
+    raise RuntimeError("Could not determine version")
 
 
 def get_toml_parser():
