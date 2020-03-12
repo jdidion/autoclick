@@ -7,8 +7,9 @@ import click
 
 from autoclick.composites import Composite, get_composite
 from autoclick.core import DEC, BaseDecorator, ParameterInfo, apply_to_parsed_args
+from autoclick.parameters import version_option
 from autoclick.types import Aggregate, AggregateTypeMixin
-from autoclick.utils import EMPTY, LOG, get_global
+from autoclick.utils import EMPTY, LOG, get_global, get_module
 
 
 class CommandMixin:
@@ -266,7 +267,12 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         self._default_values = default_values or {}
         self._pass_context = get_global("pass_context", pass_context)
         self._main = main
-        self._add_version_option = version
+        if version is True:
+            self._version_kwargs = {"module": get_module(3)}
+        elif version:
+            self._version_kwargs = {"version": version}
+        else:
+            self._version_kwargs = None
 
     @property
     def name(self) -> str:
@@ -286,9 +292,8 @@ class BaseCommandDecorator(BaseDecorator[DEC], metaclass=ABCMeta):
         composite_callbacks = []
         aggregate_callbacks = []
 
-        # TODO
-        # if self._add_version_option:
-        #     command_params.append()
+        if self._version_kwargs:
+            command_params.append(version_option(**self._version_kwargs))
 
         if self._pass_context:
             ctx_param = list(parameter_infos.keys())[0]

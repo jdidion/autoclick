@@ -1,5 +1,6 @@
 import inspect
 import logging
+import sys
 from typing import Callable, Optional, Type, TypeVar
 
 
@@ -59,3 +60,10 @@ def get_dest_type(f: Callable) -> Type:
     if dest_type in EMPTY_OR_NONE:
         raise ValueError(f"Function {f} must have a non-None return annotation")
     return dest_type
+
+
+def get_module(depth: int = 1):
+    if hasattr(sys, "_getframe"):
+        return sys._getframe(depth).f_globals.get("__name__")
+    else:
+        raise RuntimeError("Could not determine module")

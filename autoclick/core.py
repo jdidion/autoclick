@@ -342,6 +342,7 @@ class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
             param_decls = [long_name_decl]
 
             short_name = self._get_short_name(param_name, used_short_names)
+
             if short_name:
                 used_short_names.add(short_name)
                 param_decls.append(f"-{short_name}")
