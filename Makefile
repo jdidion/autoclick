@@ -1,6 +1,6 @@
 package = autoclick
 repo = jdidion/$(package)
-version = 0.8.0
+version = 0.8.1
 tests = tests
 pytestopts = -s -vv --show-capture=all
 desc = Release $(version)
