@@ -171,7 +171,7 @@ def validate_positive_even(arg: int):
 
 Note that the typing library does not currently provide an intersection type. Thus, Positive, Even, and PositiveEven must all be distinct validations. There are two ways to simplify:
 
-1. Add the parameter to the validation dict of the command decorator with a tuple of mutliple functions as the value:
+1. Add the parameter to the validation dict of the command decorator with a tuple of multiple functions as the value:
 
 ```python
 import autoclick
@@ -274,7 +274,7 @@ def hello(name: str):
 ## Installation
 
 ```bash
-$ pip intall autoclick
+$ pip install autoclick
 ```
 
 ## Runtime Dependencies
