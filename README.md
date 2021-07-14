@@ -202,7 +202,7 @@ autoclick.validation(PositiveEven, (positive, even))
 
 ### Docstring utilization
 
-AutoClick uses the [docparse](https://github.com/jdidion/docparse) library to parse the docstrings of command functions and composites to extract help text. Note that currently docparse only supports Google-style docstrings.
+AutoClick uses the [docstring_parser](https://github.com/rr-/docstring_parser) library to parse the docstrings of command functions and composites to extract help text. The parser supports ReST, Google, and Numpydoc-style docstrings.
 
 ```python
 # test.py
