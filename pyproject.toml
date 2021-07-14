@@ -13,11 +13,11 @@ include = ["CHANGES.md"]
 [tool.poetry.dependencies]
 python = "^3.6"
 click = "7.0+"
-docparse = "*"
+docstring_parser = "^0.8.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
-coverage = "^2.4"
+coverage = "^5.5"
 
 [tool.poetry.plugins."autoclick"]
 "composites" = "autoclick.composites"
