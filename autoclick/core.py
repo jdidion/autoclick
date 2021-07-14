@@ -1,4 +1,3 @@
-import typing
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 import inspect
@@ -211,7 +210,7 @@ class ParsedDocstring:
         else:
             params = None
 
-        return ParsedDocstring(description=desc, parameters=params)
+        return cls(description=desc, parameters=params)
 
 
 class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
