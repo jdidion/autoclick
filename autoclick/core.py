@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 import inspect
 import re
 from typing import (
@@ -19,7 +20,7 @@ from typing import (
 )
 
 import click
-import docparse
+import docstring_parser
 
 from autoclick.types import get_conversion
 from autoclick.types.library import OptionalTuple
@@ -184,6 +185,34 @@ class ParameterInfo:
         )
 
 
+@dataclass
+class ParsedDocstring:
+
+    # Concatenation of short and long description sections
+    description: Union[str, None]
+
+    # Mapping from parameter name to help text
+    parameters: Union[Dict[str, str], None]
+
+    @classmethod
+    def from_function(cls, func: Callable):
+        docs = docstring_parser.parse(func.__doc__)
+
+        if docs.short_description and not docs.long_description:
+            desc = docs.short_description
+        elif docs.short_description and docs.long_description:
+            desc = f"{docs.short_description} {docs.long_description}"
+        else:
+            desc = None
+
+        if docs.params:
+            params = {param.arg_name: param.description for param in docs.params}
+        else:
+            params = None
+
+        return cls(description=desc, parameters=params)
+
+
 class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
     """
     Base class for decorators of groups, commands, and composites.
@@ -242,8 +271,7 @@ class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
 
     def __call__(self, decorated: Callable) -> DEC:
         self._decorated = decorated
-        # TODO: support other docstring styles
-        self._docs = docparse.parse_docs(decorated, docparse.DocStyle.GOOGLE)
+        self._docs = ParsedDocstring.from_function(decorated)
         return self._create_decorator()
 
     @abstractmethod
@@ -408,7 +436,7 @@ class BaseDecorator(Generic[DEC], metaclass=ABCMeta):
         if name in self._param_help:
             return self._param_help[name]
         elif self._docs and self._docs.parameters and name in self._docs.parameters:
-            return str(self._docs.parameters[name].description)
+            return self._docs.parameters[name]
 
 
 def apply_to_parsed_args(d, values: dict, update=False):
