@@ -201,7 +201,7 @@ class ParsedDocstring:
         if docs.short_description and not docs.long_description:
             desc = docs.short_description
         elif docs.short_description and docs.long_description:
-            desc = f"{docs.short_description} {docs.long_description}"
+            desc = f"{docs.short_description}\n\n{docs.long_description}"
         else:
             desc = None
 
