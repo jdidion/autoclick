@@ -6,3 +6,5 @@ __pycache__/
 .idea/
 .python-version
 .coverage
+coverage.xml
+poetry.lock
